@@ -63,6 +63,26 @@ try {
   await P.setViewport({ width: 390, height: 844 });
   await P.goto(pathToFileURL(resolve("dist-phone/index.html")).href, { waitUntil: "load" });
 
+  // E7: a link with pairing text in the fragment must not pair without the user.
+  await click(D, "#pair");
+  const linkCode = await poll(D, () => document.getElementById("code").textContent);
+  const qrText = await D.evaluate(() => document.getElementById("offer").value);
+  const linkUrl = `${pathToFileURL(resolve("dist-phone/index.html")).href}#fsy1.q.${qrText.split(".")[2]}.${linkCode.replaceAll("-", "")}.${qrText.split(".")[3]}`;
+  const L = await phone.browser.newPage();
+  await L.setViewport({ width: 390, height: 844 });
+  await L.goto(linkUrl, { waitUntil: "load" });
+  check("E7 a pairing link shows the code first", linkCode, await poll(L, () => !document.getElementById("confirm-box").hidden && document.getElementById("confirm-code").textContent));
+  await new Promise((done) => setTimeout(done, 1000));
+  check("E7 a pairing link makes no answer by itself", "", await read(L, "answer"));
+  await shot(L, "phone-confirm");
+  await click(L, "#confirm-cancel");
+  check("E7 Cancel pairs nothing", "", await read(L, "answer") + (await L.evaluate(() => (document.getElementById("confirm-box").hidden ? "" : "box still open"))));
+  await L.goto(`${linkUrl.split("#")[0]}?again#${linkUrl.split("#")[1]}`, { waitUntil: "load" });
+  await poll(L, () => !document.getElementById("confirm-box").hidden);
+  await click(L, "#confirm-pair");
+  check("E7 Pair makes the answer", true, (await poll(L, () => document.getElementById("answer").value)).startsWith("fsy1.a."));
+  await L.close();
+
   // E1: pair by copy and paste, then one approval round trip.
   await click(D, "#pair");
   const code = await poll(D, () => document.getElementById("code").textContent);
@@ -149,7 +169,7 @@ try {
   await site?.close();
   relay?.close();
 }
-record.passed = !record.error && record.checks.length === 14 && record.checks.every((c) => c.ok);
+record.passed = !record.error && record.checks.length === 18 && record.checks.every((c) => c.ok);
 const path = shots ? "(not written in --shots mode)" : writeArtifact("artifacts", "e2e", record);
 for (const c of record.checks) console.log(`${c.ok ? "ok " : "BAD"} ${c.name}: ${c.actual}`);
 console.log(`${record.passed ? "PASS" : "FAIL"}${record.error ? `: ${record.error}` : ""} | ${path}`);
