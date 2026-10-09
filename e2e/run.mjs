@@ -48,8 +48,11 @@ let phone;
 let site;
 let relay;
 try {
-  desk = await launch({ extension: "dist-ext", headless });
-  phone = await launch({ extension: "dist-ext", headless });
+  // E8: CI runners may not resolve the mDNS names that hide host candidates,
+  // so the test uses plain host addresses. Real devices keep mDNS.
+  const prefs = { "media.peerconnection.ice.obfuscate_host_addresses": false };
+  desk = await launch({ extension: "dist-ext", headless, prefs });
+  phone = await launch({ extension: "dist-ext", headless, prefs });
   record.firefox = await desk.browser.version();
   const openDesk = async () => {
     if (!shots) return desk.openExtensionPage("popup.html");
