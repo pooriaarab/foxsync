@@ -7,6 +7,7 @@ import { concat, fromB64url, toB64url, utf8, type Bytes } from "./encoding.js";
 import { FoxsyncError } from "./errors.js";
 import { nextMessage, sendSystem, type Link } from "./link.js";
 import { clock, connect, field, sessionKeys, type CommonOptions } from "./pair.js";
+import { browserWire } from "./rtc.js";
 import { defaultStore, type PairRecord, type Store } from "./store.js";
 
 export interface Reconnecting {
@@ -66,12 +67,12 @@ const confirm = (ms: number) => async (link: Link) => {
 };
 
 /** Start a reconnect to a paired device. Either end can start. */
-export async function reconnect(pairId: string, o: CommonOptions): Promise<Reconnecting> {
+export async function reconnect(pairId: string, o: CommonOptions = {}): Promise<Reconnecting> {
   const now = clock(o);
   const store = o.store ?? defaultStore();
   const rec = await record(store, pairId);
   const eph = await newEphemeral();
-  const wire = await o.wire.offer();
+  const wire = await (o.wire ?? browserWire()).offer();
   const offer = await signed(rec, store, "ro", wire.sdp, eph.pub, now());
   async function waitForAnswer(answerText: string): Promise<Link> {
     const got = await checked(store, answerText, "ra", pairId, now());
@@ -83,12 +84,12 @@ export async function reconnect(pairId: string, o: CommonOptions): Promise<Recon
 }
 
 /** Answer a reconnect offer from a paired device. */
-export async function acceptReconnect(offerText: string, o: CommonOptions): Promise<Answering> {
+export async function acceptReconnect(offerText: string, o: CommonOptions = {}): Promise<Answering> {
   const now = clock(o);
   const store = o.store ?? defaultStore();
   const got = await checked(store, offerText, "ro", undefined, now());
   const eph = await newEphemeral();
-  const wire = await o.wire.answer(got.sdp);
+  const wire = await (o.wire ?? browserWire()).answer(got.sdp);
   const answer = await signed(await record(store, got.rec.id), store, "ra", wire.sdp, eph.pub, now());
   const session = await sessionKeys(got.rec.pairKey, await ecdh(eph.key, got.eph), got.text, answer, got.rec.role);
   const waitForLink = () => connect(wire, session.keys, got.rec.id, o, confirm(o.handshakeMs ?? 30_000));
