@@ -2,7 +2,7 @@
 // messages from the desktop, and answer approval requests. It is a static
 // page: it works from any static host or from file://. Keys stay in this
 // browser's IndexedDB.
-import { acceptReconnect, listPairs, onApprovalRequest, pairPhone, unpair } from "../src/index.ts";
+import { acceptReconnect, formatCode, listPairs, onApprovalRequest, pairPhone, parseCode, unpair } from "../src/index.ts";
 
 const $ = (id) => document.getElementById(id);
 const say = (text) => ($("status").textContent = text);
@@ -96,9 +96,26 @@ $("ro-accept").addEventListener("click", async () => {
 
 void showDevices().catch(fail);
 // A QR code can hold this page's URL with the pairing text in the fragment.
-// The fragment never goes to the web server.
+// The fragment never goes to the web server. Anyone can send such a link,
+// so the page shows the code and pairs only when the user says so.
 if (location.hash.includes("fsy1.q.")) {
-  $("pair-input").value = decodeURIComponent(location.hash.slice(1));
-  history.replaceState(null, "", location.pathname);
-  void startPairing();
+  const text = decodeURIComponent(location.hash.slice(1));
+  history.replaceState(null, "", location.pathname + location.search);
+  try {
+    $("confirm-code").textContent = formatCode(parseCode(text.split(".")[3] ?? ""));
+    $("pair-input").value = text;
+    $("confirm-box").hidden = false;
+    say("check the code on your desktop");
+  } catch (error) {
+    fail(error);
+  }
 }
+$("confirm-pair").addEventListener("click", () => {
+  $("confirm-box").hidden = true;
+  void startPairing();
+});
+$("confirm-cancel").addEventListener("click", () => {
+  $("confirm-box").hidden = true;
+  $("pair-input").value = "";
+  say("pairing cancelled");
+});

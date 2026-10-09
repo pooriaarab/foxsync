@@ -1,8 +1,32 @@
 {
-  "startedAt": "2026-10-09T04:19:52.173Z",
+  "startedAt": "2026-10-09T04:57:26.462Z",
   "desktop": "moz-extension page",
   "phone": "file:// page",
   "checks": [
+    {
+      "name": "E7 a pairing link shows the code first",
+      "expected": "XS83-VYF6-L4VV-NUVT-PUWS",
+      "actual": "XS83-VYF6-L4VV-NUVT-PUWS",
+      "ok": true
+    },
+    {
+      "name": "E7 a pairing link makes no answer by itself",
+      "expected": "",
+      "actual": "",
+      "ok": true
+    },
+    {
+      "name": "E7 Cancel pairs nothing",
+      "expected": "",
+      "actual": "",
+      "ok": true
+    },
+    {
+      "name": "E7 Pair makes the answer",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
     {
       "name": "E1 desktop is linked",
       "expected": "linked to Phone",
