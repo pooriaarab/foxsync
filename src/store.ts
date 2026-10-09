@@ -21,6 +21,8 @@ export interface PairRecord {
   /** The time in the newest reconnect message this device sent. */
   lastOwnTs: number;
   createdAt: number;
+  /** The relay URL from pairing, used by reconnect when set. */
+  relay?: string;
 }
 
 export interface Store {

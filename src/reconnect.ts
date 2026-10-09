@@ -7,6 +7,7 @@ import { concat, fromB64url, toB64url, utf8, type Bytes } from "./encoding.js";
 import { FoxsyncError } from "./errors.js";
 import { nextMessage, sendSystem, type Link } from "./link.js";
 import { clock, connect, field, sessionKeys, type CommonOptions } from "./pair.js";
+import { relayBox, relayPut, relayTake } from "./relay.js";
 import { browserWire } from "./rtc.js";
 import { defaultStore, type PairRecord, type Store } from "./store.js";
 
@@ -14,7 +15,10 @@ export interface Reconnecting {
   id: string;
   /** The signed, sealed reconnect offer. */
   offer: string;
-  waitForAnswer(answer: string): Promise<Link>;
+  /** True when the offer went to the relay. */
+  relayed: boolean;
+  /** Give the answer text, or nothing to poll the relay. */
+  waitForAnswer(answer?: string): Promise<Link>;
   cancel(): void;
 }
 
@@ -22,6 +26,8 @@ export interface Answering {
   id: string;
   /** The signed, sealed reconnect answer. */
   answer: string;
+  /** True when the answer went to the relay. */
+  relayed: boolean;
   waitForLink(): Promise<Link>;
   cancel(): void;
 }
@@ -66,32 +72,53 @@ const confirm = (ms: number) => async (link: Link) => {
   await nextMessage(link, "fsy:hello", ms);
 };
 
+const relayOf = (o: CommonOptions, rec: PairRecord) => o.relay ?? rec.relay;
+const post = async (relay: string | undefined, rec: PairRecord, slot: "o" | "a", text: string) =>
+  relay ? relayPut(relay, await relayBox(rec.pairKey, rec.id), slot, text).then(() => true, () => false) : false;
+
 /** Start a reconnect to a paired device. Either end can start. */
 export async function reconnect(pairId: string, o: CommonOptions = {}): Promise<Reconnecting> {
   const now = clock(o);
   const store = o.store ?? defaultStore();
   const rec = await record(store, pairId);
+  const relay = relayOf(o, rec);
   const eph = await newEphemeral();
   const wire = await (o.wire ?? browserWire()).offer();
   const offer = await signed(rec, store, "ro", wire.sdp, eph.pub, now());
-  async function waitForAnswer(answerText: string): Promise<Link> {
+  const relayed = await post(relay, rec, "o", offer);
+  async function answerWith(answerText: string): Promise<Link> {
     const got = await checked(store, answerText, "ra", pairId, now());
     const session = await sessionKeys(rec.pairKey, await ecdh(eph.key, got.eph), offer, got.text, rec.role);
     await wire.accept(got.sdp);
     return connect(wire, session.keys, pairId, o, confirm(o.handshakeMs ?? 30_000));
   }
-  return { id: pairId, offer, waitForAnswer, cancel: () => wire.close() };
+  async function waitForAnswer(answerText?: string): Promise<Link> {
+    if (answerText !== undefined) return answerWith(answerText);
+    if (!relay) throw new FoxsyncError("bad-input", "give the answer text, or set a relay");
+    return relayTake(relay, await relayBox(rec.pairKey, pairId), "a", answerWith, o.relayWaitMs ?? 600_000, o.relayPollMs ?? 1500);
+  }
+  return { id: pairId, offer, relayed, waitForAnswer, cancel: () => wire.close() };
 }
 
-/** Answer a reconnect offer from a paired device. */
-export async function acceptReconnect(offerText: string, o: CommonOptions = {}): Promise<Answering> {
-  const now = clock(o);
+/** Answer a reconnect offer: from its text, or from the relay with { pairId }. */
+export async function acceptReconnect(input: string | { pairId: string }, o: CommonOptions = {}): Promise<Answering> {
   const store = o.store ?? defaultStore();
-  const got = await checked(store, offerText, "ro", undefined, now());
+  if (typeof input === "string") return answerOffer(input, undefined, store, o);
+  const rec = await record(store, input.pairId);
+  const relay = relayOf(o, rec);
+  if (!relay) throw new FoxsyncError("bad-input", "this pair has no relay; give the offer text");
+  return relayTake(relay, await relayBox(rec.pairKey, rec.id), "o", (text) => answerOffer(text, rec.id, store, o), o.relayWaitMs ?? 600_000, o.relayPollMs ?? 1500);
+}
+
+async function answerOffer(offerText: string, pairId: string | undefined, store: Store, o: CommonOptions): Promise<Answering> {
+  const now = clock(o);
+  const got = await checked(store, offerText, "ro", pairId, now());
   const eph = await newEphemeral();
   const wire = await (o.wire ?? browserWire()).answer(got.sdp);
-  const answer = await signed(await record(store, got.rec.id), store, "ra", wire.sdp, eph.pub, now());
-  const session = await sessionKeys(got.rec.pairKey, await ecdh(eph.key, got.eph), got.text, answer, got.rec.role);
-  const waitForLink = () => connect(wire, session.keys, got.rec.id, o, confirm(o.handshakeMs ?? 30_000));
-  return { id: got.rec.id, answer, waitForLink, cancel: () => wire.close() };
+  const rec = await record(store, got.rec.id);
+  const answer = await signed(rec, store, "ra", wire.sdp, eph.pub, now());
+  const relayed = await post(relayOf(o, rec), rec, "a", answer);
+  const session = await sessionKeys(rec.pairKey, await ecdh(eph.key, got.eph), got.text, answer, rec.role);
+  const waitForLink = () => connect(wire, session.keys, rec.id, o, confirm(o.handshakeMs ?? 30_000));
+  return { id: rec.id, answer, relayed, waitForLink, cancel: () => wire.close() };
 }

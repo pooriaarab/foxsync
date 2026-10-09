@@ -66,28 +66,34 @@ async function startReconnect(pair) {
   say(`copy the reconnect offer to ${pair.peerName}`);
 }
 
-$("phone-url").value = localStorage.getItem("phoneUrl") ?? "";
-$("phone-url").addEventListener("change", (e) => localStorage.setItem("phoneUrl", e.target.value.trim()));
+for (const [id, key] of [["phone-url", "phoneUrl"], ["relay", "relay"]]) {
+  $(id).value = localStorage.getItem(key) ?? "";
+  $(id).addEventListener("change", (e) => localStorage.setItem(key, e.target.value.trim()));
+}
 
 $("pair").addEventListener("click", async () => {
   try {
     pending?.cancel();
-    pending = await pairDesktop({ name: "Firefox desktop", phoneUrl: $("phone-url").value.trim() || undefined });
+    const relay = $("relay").value.trim() || undefined;
+    pending = await pairDesktop({ name: "Firefox desktop", phoneUrl: $("phone-url").value.trim() || undefined, relay });
     drawQr(pending.qr);
     $("code").textContent = pending.code;
     $("offer").value = pending.offer;
     $("answer").value = "";
     $("pairing").hidden = false;
     say(pending.qr ? "scan the QR code, or copy the offer and type the code" : "the offer is too long for a QR code: copy it and type the code");
+    if (relay) void finishPairing(pending.waitForPhone());
   } catch (error) {
     fail(error);
   }
 });
 
-$("connect").addEventListener("click", async () => {
+$("connect").addEventListener("click", () => finishPairing(pending.waitForPhone($("answer").value)));
+
+async function finishPairing(linking) {
   try {
     say("connecting");
-    const next = await pending.waitForPhone($("answer").value);
+    const next = await linking;
     const pair = (await listPairs()).find((p) => p.id === next.pairId);
     useLink(next, pair?.peerName ?? "phone");
     $("pairing").hidden = true;
@@ -96,7 +102,7 @@ $("connect").addEventListener("click", async () => {
   } catch (error) {
     fail(error);
   }
-});
+}
 
 $("ro-connect").addEventListener("click", async () => {
   try {
