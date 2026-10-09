@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>foxsync phone</title>
+    <link rel="stylesheet" href="phone.css" />
+  </head>
+  <body>
+    <header>
+      <h1>foxsync</h1>
+      <p>State: <output id="state">not linked</output></p>
+    </header>
+
+    <section id="confirm-box" hidden>
+      <h2>Pair with this desktop?</h2>
+      <p>A link asks this phone to pair. Pair only if your desktop shows this code now:</p>
+      <p class="code" id="confirm-code"></p>
+      <button id="confirm-pair" type="button" class="approve">Pair</button>
+      <button id="confirm-cancel" type="button">Cancel</button>
+    </section>
+
+    <section id="feed-box">
+      <h2>From your desktop</h2>
+      <ul id="feed"><li class="empty">Nothing yet.</li></ul>
+    </section>
+
+    <section>
+      <h2>Pair</h2>
+      <label>QR text or offer <textarea id="pair-input" rows="3" placeholder="fsy1.q... or fsy1.o..."></textarea></label>
+      <label>Code (only with an offer) <input id="code" autocomplete="off" autocapitalize="characters" placeholder="ABCD-EFGH-JKLM-NPQR-STUV" /></label>
+      <button id="pair" type="button">Pair</button>
+    </section>
+
+    <section id="answer-box" hidden>
+      <h2>Answer for the desktop</h2>
+      <textarea id="answer" rows="4" readonly></textarea>
+      <button id="copy" type="button">Copy</button>
+    </section>
+
+    <section>
+      <h2>Reconnect</h2>
+      <label>Reconnect offer from the desktop <textarea id="ro-input" rows="3" placeholder="fsy1.ro..."></textarea></label>
+      <button id="ro-accept" type="button">Answer</button>
+    </section>
+
+    <section>
+      <h2>Paired devices</h2>
+      <ul id="devices"></ul>
+    </section>
+
+    <p class="status">Status: <output id="status">ready</output></p>
+    <script src="phone.js"></script>
+  </body>
+</html>
