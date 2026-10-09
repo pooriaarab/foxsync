@@ -154,9 +154,11 @@ Options for the pairing and reconnect functions:
 
 ### Phone page
 
-`phone/` is a static page for phones. Build it with `pnpm build:phone`. The output in `dist-phone/` is one HTML file, one CSS file and one classic script. It works from any static host and from `file://`.
+`phone/` is a static page for phones. Build it with `pnpm build:phone`. The output in `dist-phone/` is one HTML file, one CSS file and one classic script. It runs on a static host, and from `file://` for tests.
 
-The page pairs from the QR text, or from the code plus the offer. When the page URL has the pairing text in its fragment, it starts at once. The fragment never goes to the web server. Then the page shows `note` messages (`{ text }`) and approval requests with Approve and Deny. It also answers reconnect offers and lists paired devices.
+Host the page on an origin of its own, for example `phone.example.org`. The pair records and keys are in the IndexedDB of that origin. Every other page on the same origin can read the records and use the keys. A project page on a shared origin, such as `<user>.github.io/<repo>`, is not safe.
+
+The page pairs from the QR text, or from the code plus the offer. When the page URL has the pairing text in its fragment, the page shows the code and waits. It pairs only after you press Pair. Make sure that the code is the one on your desktop, because anyone can send you such a link. The fragment never goes to the web server. Then the page shows `note` messages (`{ text }`) and approval requests with Approve and Deny. It also answers reconnect offers and lists paired devices.
 
 ### Demo extension
 
@@ -213,9 +215,10 @@ The library uses no WebExtension API, so it also runs in a normal page. The link
 - **No STUN or TURN.** foxsync does not provide them. Across networks, give STUN servers to `browserWire`. Through a strict NAT, you need a TURN server.
 - **The link lives in one page.** When the page closes, the link closes. Call `reconnect` to start a new one.
 - **The phone page has no camera scanner.** A phone camera app opens the QR code only when `phoneUrl` points to a hosted phone page. Without it, paste the QR text. The desktop cannot scan a QR code from the phone either.
-- **The phone page is not hosted yet.** Use `dist-phone/` from any static host or from a file.
+- **The phone page is not hosted yet.** Put `dist-phone/` on a static host with its own origin.
 - **The demo reconnects by copy and paste only.** Reconnect through the relay works in the API, but the demo pages have no button for it.
 - **Tested in Firefox only.** The E2E runs two Firefox 157 instances on one Mac, with the phone page at a phone-sized viewport. Safari, Chrome and real phones are not tested.
+- **Reconnects from two pages at once.** Each page keeps the updates of a pair record in order. Two pages of one origin that reconnect the same pair at the same moment do not.
 - **One link per pair at a time.** There is no fan-out to many phones in one call.
 - **The relay has no rate limit.** Add a Cloudflare rate limiting rule if you run one in public.
 
