@@ -1,0 +1,13 @@
+# The optional foxsync relay. Not deployed by this repo. To run your own:
+#   cd relay && npx wrangler deploy
+name = "foxsync-relay"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "BOXES"
+class_name = "Box"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Box"]
