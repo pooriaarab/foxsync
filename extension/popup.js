@@ -118,7 +118,7 @@ $("ro-connect").addEventListener("click", async () => {
 $("ask").addEventListener("click", async () => {
   $("decision").textContent = "waiting";
   try {
-    const decision = await askApproval(link, { title: "Test approval", detail: `Sent at ${new Date().toLocaleTimeString()}` });
+    const decision = await askApproval(link, { title: "Sample approval", detail: `Sent at ${new Date().toLocaleTimeString()}` });
     $("decision").textContent = `${decision} (authenticated)`;
   } catch (error) {
     $("decision").textContent = `rejected: ${error?.code ?? error}`;

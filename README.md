@@ -160,13 +160,15 @@ Host the page on an origin of its own, for example `phone.example.org`. The pair
 
 The page pairs from the QR text, or from the code plus the offer. When the page URL has the pairing text in its fragment, the page shows the code and waits. It pairs only after you press Pair. Make sure that the code is the one on your desktop, because anyone can send you such a link. The fragment never goes to the web server. Then the page shows `note` messages (`{ text }`) and approval requests with Approve and Deny. It also answers reconnect offers and lists paired devices.
 
-### Demo extension
+### The extension
 
-`extension/` is a demo. Build it with `pnpm build:ext` and load `dist-ext/` as a temporary add-on. It opens as the toolbar popup or in the sidebar. Use the sidebar: a popup closes when it loses focus, and the link closes with it. The page can:
+`extension/` is the foxsync add-on. Build it with `pnpm build:ext` and load `dist-ext/` as a temporary add-on. Install from AMO: [addons.mozilla.org/firefox/addon/foxsync](https://addons.mozilla.org/firefox/addon/foxsync/) (pending AMO review; the link works after approval). It opens as the toolbar popup or in the sidebar. Use the sidebar: a popup closes when it loses focus, and the link closes with it. The page can:
 
 - pair a phone: QR code, code, offer, and a box for the answer,
 - list paired devices, with Reconnect and Unpair,
-- send a test approval request and show the phone's answer.
+- send a sample approval request and show the phone's answer.
+
+[docs/amo-data.md](docs/amo-data.md) lists what the add-on sends out of the browser, and why its manifest declares no AMO data type.
 
 ### Relay
 
@@ -202,9 +204,9 @@ The relay can drop or delay texts. It can also fill a box with junk, which costs
 | [`CompressionStream`](https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream) / [`DecompressionStream`](https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream) | Shorter offer text, so it fits in a QR code. |
 | [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | Pair records. It stores `CryptoKey` objects without their bytes. |
 | [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) | The optional relay. |
-| [`sidebar_action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/sidebar_action) | Demo: the sidebar keeps the link open. |
-| [`action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/action) | Demo: the toolbar popup. |
-| [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) | Demo: draws the QR code (with [uqr](https://github.com/unjs/uqr)). |
+| [`sidebar_action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/sidebar_action) | Extension: the sidebar keeps the link open. |
+| [`action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/action) | Extension: the toolbar popup. |
+| [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) | Extension: draws the QR code (with [uqr](https://github.com/unjs/uqr)). |
 | [`Clipboard.writeText`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) | Phone page: the Copy button for the answer. |
 
 The library uses no WebExtension API, so it also runs in a normal page. The link must live in a page that stays open. The MV3 background is an event page, and it unloads when idle. That drops the link, so use the sidebar or a pinned tab.
@@ -216,7 +218,7 @@ The library uses no WebExtension API, so it also runs in a normal page. The link
 - **The link lives in one page.** When the page closes, the link closes. Call `reconnect` to start a new one.
 - **The phone page has no camera scanner.** A phone camera app opens the QR code only when `phoneUrl` points to a hosted phone page. Without it, paste the QR text. The desktop cannot scan a QR code from the phone either.
 - **The phone page is not hosted yet.** Put `dist-phone/` on a static host with its own origin.
-- **The demo reconnects by copy and paste only.** Reconnect through the relay works in the API, but the demo pages have no button for it.
+- **The add-on and the phone page reconnect by copy and paste only.** Reconnect through the relay works in the API, but the pages have no button for it.
 - **Tested in Firefox only.** The E2E runs two Firefox 157 instances on one Mac, with the phone page at a phone-sized viewport. Safari, Chrome and real phones are not tested.
 - **Reconnects from two pages at once.** Each page keeps the updates of a pair record in order. Two pages of one origin that reconnect the same pair at the same moment do not.
 - **One link per pair at a time.** There is no fan-out to many phones in one call.
