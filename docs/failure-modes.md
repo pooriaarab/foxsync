@@ -112,6 +112,7 @@ talk over a real WebRTC data channel on this machine.
 | E4 | The user reconnects after E3 by copy and paste | A new link works; a deny arrives as `deny (authenticated)` | `pnpm e2e` E4 |
 | E5 | The phone forgot the desktop, and the desktop tries to reconnect | The phone rejects the offer with `unknown-pair` | `pnpm e2e` E5 |
 | E6 | The phone page opens from `file://` with no web server | Pairing, IndexedDB keys and WebRTC work | `pnpm e2e` (all checks use `file://`) |
+| E7 | An attacker sends a link to the phone page with the attacker's pairing text in the fragment | The page does not pair by itself. It shows the code and waits; Cancel pairs nothing, and only Pair makes an answer | `pnpm e2e` E7 |
 
 ## Optional relay
 

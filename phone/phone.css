@@ -17,3 +17,5 @@ li .result { font-weight: 600; margin-top: 4px; }
 .empty { color: #8f8f9d; }
 output { font-weight: 600; }
 .status { font-size: 14px; color: #5b5b66; }
+.code { font: 600 20px ui-monospace, monospace; letter-spacing: 1px; margin: 8px 0; }
+#confirm-box { border-color: #b3261e; }
