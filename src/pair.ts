@@ -10,6 +10,7 @@ import { deriveAes, deriveBytes, ecdh, newEphemeral, newIdentity, rootKey, sha25
 import { formatCode, fromB64url, newCode, parseCode, randomId, toB64url, utf8, type Bytes } from "./encoding.js";
 import { FoxsyncError } from "./errors.js";
 import { Link, nextMessage, sendSystem, type LinkOptions, type Transport } from "./link.js";
+import { relayBox, relayPut, relayTake } from "./relay.js";
 import { browserWire } from "./rtc.js";
 import { defaultStore, type Store } from "./store.js";
 
@@ -38,6 +39,12 @@ export interface CommonOptions {
   link?: LinkOptions;
   /** How long to wait for the channel and the hello messages. Default 30000 ms. */
   handshakeMs?: number;
+  /** Relay URL (optional). For pairDesktop it goes into the offer; for reconnect it overrides the stored one. */
+  relay?: string;
+  /** How long to poll the relay. Default: until the code expires (pairing), or 10 minutes (reconnect). */
+  relayWaitMs?: number;
+  /** Time between relay polls. Default 1500 ms. */
+  relayPollMs?: number;
   now?: () => number;
 }
 
@@ -61,8 +68,8 @@ export interface DesktopPairing {
   /** The text for the QR code (code plus offer), or null when it is too long. */
   qr: string | null;
   expiresAt: number;
-  /** Give the phone's answer text. Resolves with the open Link. */
-  waitForPhone(answer: string): Promise<Link>;
+  /** Give the phone's answer text, or nothing to poll the relay. Resolves with the open Link. */
+  waitForPhone(answer?: string): Promise<Link>;
   cancel(): void;
 }
 
@@ -70,6 +77,8 @@ export interface PhonePairing {
   id: string;
   /** The sealed answer. Give it to the desktop. */
   answer: string;
+  /** True when the answer went to the relay, so the user does not have to copy it. */
+  relayed: boolean;
   waitForDesktop(): Promise<Link>;
   cancel(): void;
 }
@@ -148,7 +157,7 @@ export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPa
   const eph = await newEphemeral();
   const wire = await (o.wire ?? browserWire()).offer();
   const expiresAt = now() + (o.ttlMs ?? 600_000);
-  const body = await seal(await deriveAes(root, utf8(id), "fsy offer"), `fsy1.o.${id}`, { sdp: wire.sdp, eph: toB64url(eph.pub), exp: expiresAt, name });
+  const body = await seal(await deriveAes(root, utf8(id), "fsy offer"), `fsy1.o.${id}`, { sdp: wire.sdp, eph: toB64url(eph.pub), exp: expiresAt, name, relay: o.relay });
   const offer = formatText("o", id, body);
   const qrText = formatText("q", id, body, code);
   const qr = o.phoneUrl ? `${o.phoneUrl}#${qrText}` : qrText;
@@ -159,7 +168,16 @@ export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPa
     wire.close();
   };
 
-  async function waitForPhone(answerText: string): Promise<Link> {
+  function waitForPhone(answerText?: string): Promise<Link> {
+    if (answerText !== undefined) return answerWith(answerText);
+    if (!o.relay) return Promise.reject(new FoxsyncError("bad-input", "give the answer text, or set the relay option"));
+    const relay = o.relay;
+    return relayBox(root, id).then((box) =>
+      relayTake(relay, box, "a", answerWith, o.relayWaitMs ?? Math.max(expiresAt - now(), 0), o.relayPollMs ?? 1500),
+    );
+  }
+
+  async function answerWith(answerText: string): Promise<Link> {
     if (used) throw new FoxsyncError("used", "this pairing was already used or cancelled; start a new one");
     if (now() > expiresAt) {
       cancel();
@@ -184,7 +202,7 @@ export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPa
       const phone = await readHello(link, o.handshakeMs ?? 30_000);
       const me = await newIdentity(phone.alg);
       await sendHello(link, me.alg, me.pub, name);
-      await store.put({ id, role: "desktop", name, peerName: phone.name, alg: me.alg, keys: me.keys, peerPub: phone.pub, pairKey: await session.pairKey(), lastPeerTs: 0, lastOwnTs: 0, createdAt: now() });
+      await store.put({ id, role: "desktop", name, peerName: phone.name, alg: me.alg, keys: me.keys, peerPub: phone.pub, pairKey: await session.pairKey(), lastPeerTs: 0, lastOwnTs: 0, createdAt: now(), relay: o.relay });
     });
   }
 
@@ -211,6 +229,9 @@ export async function pairPhone(input: string | { code: string; offer: string },
   const answer = formatText("a", id, body);
   const shared = await ecdh(eph.key, fromB64url(field(value, "eph", "string")));
   const session = await sessionKeys(root, shared, offer, answer, "phone");
+  const relay = o.relay ?? (value as { relay?: unknown }).relay;
+  const relayUrl = typeof relay === "string" ? relay : undefined;
+  const relayed = relayUrl ? await relayPut(relayUrl, await relayBox(root, id), "a", answer).then(() => true, () => false) : false;
 
   const waitForDesktop = () =>
     connect(wire, session.keys, id, { ...o, handshakeMs: o.handshakeMs ?? Math.max(exp + SKEW_MS - now(), 1000) }, async (link) => {
@@ -218,7 +239,7 @@ export async function pairPhone(input: string | { code: string; offer: string },
       await sendHello(link, me.alg, me.pub, name);
       const desk = await readHello(link, o.handshakeMs ?? 30_000);
       if (desk.alg !== me.alg) throw new FoxsyncError("bad-input", "the desktop chose another identity algorithm");
-      await store.put({ id, role: "phone", name, peerName: desk.name, alg: me.alg, keys: me.keys, peerPub: desk.pub, pairKey: await session.pairKey(), lastPeerTs: 0, lastOwnTs: 0, createdAt: now() });
+      await store.put({ id, role: "phone", name, peerName: desk.name, alg: me.alg, keys: me.keys, peerPub: desk.pub, pairKey: await session.pairKey(), lastPeerTs: 0, lastOwnTs: 0, createdAt: now(), relay: relayUrl });
     });
-  return { id, answer, waitForDesktop, cancel: () => wire.close() };
+  return { id, answer, relayed, waitForDesktop, cancel: () => wire.close() };
 }

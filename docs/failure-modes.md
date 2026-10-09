@@ -110,3 +110,21 @@ talk over a real WebRTC data channel on this machine.
 | E4 | The user reconnects after E3 by copy and paste | A new link works; a deny arrives as `deny (authenticated)` | `pnpm e2e` E4 |
 | E5 | The phone forgot the desktop, and the desktop tries to reconnect | The phone rejects the offer with `unknown-pair` | `pnpm e2e` E5 |
 | E6 | The phone page opens from `file://` with no web server | Pairing, IndexedDB keys and WebRTC work | `pnpm e2e` (all checks use `file://`) |
+
+## Optional relay
+
+`relay/` is a small Cloudflare Worker. It keeps one sealed text per box
+and slot for 10 minutes, so the phone does not have to copy its answer
+back, and so a reconnect needs no copy and paste. The box id comes from
+the pairing code or the pair key, so only the two ends know it.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| Y1 | Someone stores data that is not foxsync text, or a large body | The relay answers 400 or 413 and stores nothing | `tests/relay.test.ts` Y1 |
+| Y2 | A request has a bad box id, slot or method | The relay answers 404 or 405 | `tests/relay.test.ts` Y2 |
+| Y3 | A text stays in a box after 10 minutes | The relay answers 404 and deletes it | `tests/relay.test.ts` Y3 |
+| Y4 | The relay, or anyone who knows the box id, puts a forged answer in the box | The desktop rejects it (`bad-mac`), keeps polling, and pairs when the real answer comes | `tests/relay.test.ts` Y4 |
+| Y5 | The relay is down | The wait fails with `timeout`; it does not hang | `tests/relay.test.ts` Y5 |
+| Y6 | (Normal path) pairing through the relay | The phone posts its answer; the desktop picks it up with no copy step | `tests/relay.test.ts` Y6 |
+| Y7 | A reconnect through the relay finds an old offer in the box | The old offer fails as `replay` and is skipped; the new offer connects | `tests/relay.test.ts` Y7 |
+| Y8 | (Normal path, real browsers) the demo pairs through a relay | The phone posts its answer; the desktop links with no pasted answer | `pnpm e2e` Y8 |

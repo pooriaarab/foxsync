@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-09T04:14:57.504Z",
+  "startedAt": "2026-10-09T04:19:52.173Z",
   "desktop": "moz-extension page",
   "phone": "file:// page",
   "checks": [
@@ -73,6 +73,18 @@
       "name": "E5 phone rejects a reconnect after forget",
       "expected": true,
       "actual": true,
+      "ok": true
+    },
+    {
+      "name": "Y8 phone answer goes to the relay",
+      "expected": "the answer went to the relay; wait for the desktop",
+      "actual": "the answer went to the relay; wait for the desktop",
+      "ok": true
+    },
+    {
+      "name": "Y8 desktop links with no pasted answer",
+      "expected": "linked to Phone",
+      "actual": "linked to Phone",
       "ok": true
     }
   ],

@@ -56,10 +56,10 @@ async function showDevices() {
   }
 }
 
-function showAnswer(answer) {
+function showAnswer(answer, relayed) {
   $("answer").value = answer;
   $("answer-box").hidden = false;
-  say("copy the answer to the desktop, then wait");
+  say(relayed ? "the answer went to the relay; wait for the desktop" : "copy the answer to the desktop, then wait");
 }
 
 async function startPairing() {
@@ -67,7 +67,7 @@ async function startPairing() {
     const text = $("pair-input").value.trim();
     const code = $("code").value.trim();
     const pairing = await pairPhone(code ? { code, offer: text } : text, { name: "Phone" });
-    showAnswer(pairing.answer);
+    showAnswer(pairing.answer, pairing.relayed);
     const next = await pairing.waitForDesktop();
     const pair = (await listPairs()).find((p) => p.id === next.pairId);
     useLink(next, pair?.peerName ?? "desktop");
@@ -84,7 +84,7 @@ $("copy").addEventListener("click", () => navigator.clipboard.writeText($("answe
 $("ro-accept").addEventListener("click", async () => {
   try {
     const answering = await acceptReconnect($("ro-input").value);
-    showAnswer(answering.answer);
+    showAnswer(answering.answer, answering.relayed);
     const pair = (await listPairs()).find((p) => p.id === answering.id);
     useLink(await answering.waitForLink(), pair?.peerName ?? "desktop");
     $("ro-input").value = "";

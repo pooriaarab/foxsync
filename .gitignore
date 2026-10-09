@@ -6,3 +6,4 @@ dist-ext/
 web-ext-artifacts/
 source.zip
 dist-phone/
+.wrangler/
