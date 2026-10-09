@@ -8,9 +8,26 @@
 //                  cannot screenshot moz-extension: pages) and save PNGs.
 // Env: FIREFOX (the Firefox binary).
 import { mkdirSync } from "node:fs";
+import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { launch, poll, serve, writeArtifact } from "create-foxkit/e2e";
+import { handle } from "../relay/handler.ts";
+
+// The relay handler from relay/, served by Node on 127.0.0.1 with an in-memory store.
+async function startRelay() {
+  const boxes = new Map();
+  const store = { get: async (k) => boxes.get(k), put: async (k, v) => void boxes.set(k, v), delete: async (k) => void boxes.delete(k) };
+  const server = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = req.method === "PUT" ? Buffer.concat(chunks) : undefined;
+    const reply = await handle(new Request(`http://127.0.0.1${req.url}`, { method: req.method, body }), store, Date.now());
+    res.writeHead(reply.status, Object.fromEntries(reply.headers)).end(Buffer.from(await reply.arrayBuffer()));
+  });
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  return { url: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+}
 
 const args = process.argv.slice(2);
 const shots = args.includes("--shots") ? resolve(args[args.indexOf("--shots") + 1]) : null;
@@ -29,6 +46,7 @@ const phoneHas = (page, selector) => poll(page, (s) => document.querySelectorAll
 let desk;
 let phone;
 let site;
+let relay;
 try {
   desk = await launch({ extension: "dist-ext", headless });
   phone = await launch({ extension: "dist-ext", headless });
@@ -112,14 +130,26 @@ try {
   await phoneHas(P, "#devices li.empty");
   await reconnectFlow(D);
   check("E5 phone rejects a reconnect after forget", true, (await text(P, "status", "error")).includes("unknown-pair"));
+
+  // Y8: pair through the relay. The phone's answer goes to the relay, so nobody pastes it.
+  relay = await startRelay();
+  await fill(D, "relay", relay.url);
+  await click(D, "#pair");
+  const relayCode = await poll(D, () => document.getElementById("pairing").hidden === false && document.getElementById("code").textContent);
+  await fill(P, "pair-input", await read(D, "offer"));
+  await fill(P, "code", relayCode);
+  await click(P, "#pair");
+  check("Y8 phone answer goes to the relay", "the answer went to the relay; wait for the desktop", await text(P, "status", "the answer"));
+  check("Y8 desktop links with no pasted answer", "linked to Phone", await text(D, "state", "linked"));
 } catch (error) {
   record.error = error instanceof Error ? error.message : String(error);
 } finally {
   await desk?.close();
   await phone?.close();
   await site?.close();
+  relay?.close();
 }
-record.passed = !record.error && record.checks.length === 12 && record.checks.every((c) => c.ok);
+record.passed = !record.error && record.checks.length === 14 && record.checks.every((c) => c.ok);
 const path = shots ? "(not written in --shots mode)" : writeArtifact("artifacts", "e2e", record);
 for (const c of record.checks) console.log(`${c.ok ? "ok " : "BAD"} ${c.name}: ${c.actual}`);
 console.log(`${record.passed ? "PASS" : "FAIL"}${record.error ? `: ${record.error}` : ""} | ${path}`);

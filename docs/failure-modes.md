@@ -127,3 +127,4 @@ the pairing code or the pair key, so only the two ends know it.
 | Y5 | The relay is down | The wait fails with `timeout`; it does not hang | `tests/relay.test.ts` Y5 |
 | Y6 | (Normal path) pairing through the relay | The phone posts its answer; the desktop picks it up with no copy step | `tests/relay.test.ts` Y6 |
 | Y7 | A reconnect through the relay finds an old offer in the box | The old offer fails as `replay` and is skipped; the new offer connects | `tests/relay.test.ts` Y7 |
+| Y8 | (Normal path, real browsers) the demo pairs through a relay | The phone posts its answer; the desktop links with no pasted answer | `pnpm e2e` Y8 |
