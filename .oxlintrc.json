@@ -4,5 +4,10 @@
     "correctness": "error",
     "suspicious": "warn"
   },
-  "ignorePatterns": ["dist", "dist-ext", "artifacts"]
+  "ignorePatterns": [
+    "dist",
+    "dist-ext",
+    "artifacts",
+    "dist-phone"
+  ]
 }
