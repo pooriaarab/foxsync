@@ -94,3 +94,19 @@ approval helpers send `approval.request` and wait for `approval.answer`.
 | A3 | The phone does not answer in time | `askApproval` rejects with `timeout`; a late answer does nothing | `tests/approval.test.ts` A3 |
 | A4 | An answer has an unknown id or a decision that is not `approve` or `deny` | It is ignored; no request resolves | `tests/approval.test.ts` A4 |
 | A5 | Two requests wait at the same time | Each answer goes to its own request | `tests/approval.test.ts` A5 |
+
+## End to end: two real Firefox instances
+
+`pnpm e2e` starts two Firefox instances with separate profiles. The
+"desktop" runs the demo extension page. The "phone" runs the phone page
+from `file://` at a phone-sized viewport. They pair by copy and paste and
+talk over a real WebRTC data channel on this machine.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| E1 | (Normal path) pair by copy and paste, send an approval request, approve on the phone | The desktop shows `approve (authenticated)`; both ends list the other device | `pnpm e2e` E1 |
+| E2 | A byte of the phone's answer frame changes on the wire | The desktop rejects it (`bad-mac`) and closes the link; the request is not approved | `pnpm e2e` E2 |
+| E3 | The desktop page closes (like an event page or sidebar that unloads) | The phone shows `closed: peer-closed` | `pnpm e2e` E3 |
+| E4 | The user reconnects after E3 by copy and paste | A new link works; a deny arrives as `deny (authenticated)` | `pnpm e2e` E4 |
+| E5 | The phone forgot the desktop, and the desktop tries to reconnect | The phone rejects the offer with `unknown-pair` | `pnpm e2e` E5 |
+| E6 | The phone page opens from `file://` with no web server | Pairing, IndexedDB keys and WebRTC work | `pnpm e2e` (all checks use `file://`) |
