@@ -6,3 +6,5 @@ export { formatCode, parseCode } from "./encoding.js";
 export { IdbStore, MemoryStore, listPairs, unpair, type PairInfo, type PairRecord, type Store } from "./store.js";
 export { pairDesktop, pairPhone, type CommonOptions, type DesktopPairing, type PairDesktopOptions, type PhonePairing, type Wire, type WireFactory } from "./pair.js";
 export { acceptReconnect, reconnect, type Answering, type Reconnecting } from "./reconnect.js";
+export { browserWire } from "./rtc.js";
+export { askApproval, onApprovalRequest, type ApprovalRequest, type Decision } from "./approval.js";
