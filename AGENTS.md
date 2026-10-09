@@ -66,9 +66,12 @@ src/              the library source, built to dist/ by tsc
 tests/            tests for the failure modes in docs/failure-modes.md
 docs/failure-modes.md  every way the code can fail, written before the code
 .github/          CI, release, PR and issue standards
-extension/        the demo extension that shows this repo working in Firefox
-scripts/build-ext.mjs  bundles extension/ into dist-ext/ with esbuild
-e2e/run.mjs       the Firefox E2E test; writes artifacts/e2e-<date>.json
+extension/        the demo extension (popup and sidebar) that pairs a phone
+phone/            the static phone page, built to dist-phone/
+relay/            the optional Cloudflare Worker relay (not deployed here)
+scripts/build-ext.mjs    bundles extension/ into dist-ext/ with esbuild
+scripts/build-phone.mjs  bundles phone/ into dist-phone/ (one classic script)
+e2e/run.mjs       the two-Firefox E2E test; writes artifacts/e2e-<date>.json
 ```
 
 ## Commands
@@ -78,7 +81,9 @@ pnpm install
 pnpm ci:local   # lint + typecheck + test + build; run before every hand-off
 pnpm build:ext  # extension/ -> dist-ext/; fails if the manifest and package.json versions differ
 pnpm lint:ext   # web-ext lint on dist-ext/ (part of ci:local)
-pnpm e2e        # Firefox E2E; set FIREFOX if Firefox is not in the usual place
+pnpm build:phone  # phone/ -> dist-phone/ (part of ci:local)
+pnpm e2e        # two-Firefox E2E; set FIREFOX if Firefox is not in the usual place
+pnpm e2e -- --shots <dir>  # same flow, desktop page over http, saves PNGs
 ```
 
 ## Testing
