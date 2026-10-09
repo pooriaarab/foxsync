@@ -44,3 +44,20 @@ kind and pairing id are the additional data.
 | S3 | Script in the page tries to export an identity private key | `exportKey` rejects, because the key is not extractable | `tests/store.test.ts` S3 |
 | S4 | The browser has no Ed25519 | `newIdentity` uses ECDSA P-256, and sign and verify still work | `tests/store.test.ts` S4 |
 | S5 | A signature from another key, or over other data, is checked | `verify` returns `false` | `tests/store.test.ts` S5 |
+
+## Pairing
+
+Pairing needs no server. The desktop shows a QR code with a one-time code
+and a sealed offer. The phone sends back a sealed answer. After the
+channel opens, both ends make per-pair identity keys and store a shared
+pair key.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| P1 | (Normal path) a phone pairs and the two ends talk | Both ends get a Link and a pair record; messages go both ways | `tests/pair.test.ts` P1 |
+| P2 | Someone replays the QR code after the pairing finished | The desktop rejects the second answer with `used` | `tests/pair.test.ts` P2 |
+| P3 | Someone uses the QR code after it expired | The phone and the desktop reject it with `expired` | `tests/pair.test.ts` P3 |
+| P4 | An attacker guesses the code and sends answers | Each answer fails with `bad-mac`; after 3 failures the pairing is cancelled and even the real answer gets `used` | `tests/pair.test.ts` P4 |
+| P5 | A MITM on the copy and paste path swaps or changes the offer or the answer (the SDP) | The other end rejects it with `bad-mac`, so the MITM cannot read or inject | `tests/pair.test.ts` P5 |
+| P6 | Two phones scan one QR code at the same time | The first answer wins; the second gets `used`. Two separate pairings at once both work | `tests/pair.test.ts` P6 |
+| P7 | The offer is too large for a QR code | `qr` is `null`; the phone pairs with the typed code plus the pasted offer | `tests/pair.test.ts` P7 |
