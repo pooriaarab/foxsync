@@ -113,6 +113,7 @@ talk over a real WebRTC data channel on this machine.
 | E5 | The phone forgot the desktop, and the desktop tries to reconnect | The phone rejects the offer with `unknown-pair` | `pnpm e2e` E5 |
 | E6 | The phone page opens from `file://` with no web server | Pairing, IndexedDB keys and WebRTC work | `pnpm e2e` (all checks use `file://`) |
 | E7 | An attacker sends a link to the phone page with the attacker's pairing text in the fragment | The page does not pair by itself. It shows the code and waits; Cancel pairs nothing, and only Pair makes an answer | `pnpm e2e` E7 |
+| E8 | The CI runner cannot resolve the mDNS names that Firefox puts in host candidates, so the channel never opens | The E2E sets `media.peerconnection.ice.obfuscate_host_addresses` to `false`, so candidates carry plain host addresses; real devices keep mDNS | `pnpm e2e` (both Firefox instances) |
 
 ## Optional relay
 
