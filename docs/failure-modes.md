@@ -75,3 +75,22 @@ sender's identity key. Its time must be newer than the last one accepted.
 | R3 | One end unpaired, and the other end tries to reconnect | The unpaired end rejects the offer with `unknown-pair` | `tests/reconnect.test.ts` R3 |
 | R4 | An attacker sends a reconnect offer signed with another key, or reflects a device's own offer back to it | The receiver rejects it with `bad-signature` | `tests/reconnect.test.ts` R4 |
 | R5 | A reconnect offer carries a time far from now (a held-back offer, or a wrong clock) | The receiver rejects it with `stale` | `tests/reconnect.test.ts` R5 |
+
+## WebRTC wire and approvals
+
+`browserWire` is the real Wire: one `RTCPeerConnection` with one ordered
+data channel. With no ICE servers, it uses host candidates only. The
+approval helpers send `approval.request` and wait for `approval.answer`.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| W1 | The data channel never opens (the ends are on different networks, or a strict NAT blocks them) | The wait fails with `timeout` after `handshakeMs`; it does not hang | `tests/approval.test.ts` W1 |
+| W2 | ICE gathering never completes | The offer uses the candidates it has after 5 seconds | Firefox E2E (`pnpm e2e`) |
+| W3 | A frame arrives before the Link listens (the phone sends its hello first) | The transport keeps the frame and gives it to the Link | Firefox E2E (`pnpm e2e`) |
+| W4 | The peer page closes, so the data channel closes | The Link closes with `peer-closed` | Firefox E2E (`pnpm e2e`) |
+| W5 | The pasted SDP is not valid | The answer side fails with `bad-input` | `tests/approval.test.ts` W5 |
+| A1 | (Normal path) the desktop asks and the phone approves or denies | `askApproval` resolves with `approve` or `deny` | `tests/approval.test.ts` A1 |
+| A2 | The link closes before the phone answers | `askApproval` rejects with the close reason | `tests/approval.test.ts` A2 |
+| A3 | The phone does not answer in time | `askApproval` rejects with `timeout`; a late answer does nothing | `tests/approval.test.ts` A3 |
+| A4 | An answer has an unknown id or a decision that is not `approve` or `deny` | It is ignored; no request resolves | `tests/approval.test.ts` A4 |
+| A5 | Two requests wait at the same time | Each answer goes to its own request | `tests/approval.test.ts` A5 |

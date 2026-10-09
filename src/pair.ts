@@ -10,6 +10,7 @@ import { deriveAes, deriveBytes, ecdh, newEphemeral, newIdentity, rootKey, sha25
 import { formatCode, fromB64url, newCode, parseCode, randomId, toB64url, utf8, type Bytes } from "./encoding.js";
 import { FoxsyncError } from "./errors.js";
 import { Link, nextMessage, sendSystem, type LinkOptions, type Transport } from "./link.js";
+import { browserWire } from "./rtc.js";
 import { defaultStore, type Store } from "./store.js";
 
 /** One peer connection. In the browser this is an RTCPeerConnection with one data channel. */
@@ -32,7 +33,8 @@ export interface CommonOptions {
   /** This device's name, as the peer sees it. */
   name?: string;
   store?: Store;
-  wire: WireFactory;
+  /** How to make the peer connection. Default: browserWire() (WebRTC, no ICE servers). */
+  wire?: WireFactory;
   link?: LinkOptions;
   /** How long to wait for the channel and the hello messages. Default 30000 ms. */
   handshakeMs?: number;
@@ -136,7 +138,7 @@ async function readHello(link: Link, ms: number): Promise<Hello> {
 const sendHello = (link: Link, alg: IdentityAlg, pub: Bytes, name: string) => sendSystem(link, "fsy:hello", { alg, pub: toB64url(pub), name });
 
 /** Start pairing on the desktop: make the code, the sealed offer and the QR text. */
-export async function pairDesktop(o: PairDesktopOptions): Promise<DesktopPairing> {
+export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPairing> {
   const now = clock(o);
   const store = o.store ?? defaultStore();
   const name = o.name ?? "Desktop";
@@ -144,7 +146,7 @@ export async function pairDesktop(o: PairDesktopOptions): Promise<DesktopPairing
   const code = newCode();
   const root = await rootKey(utf8(code));
   const eph = await newEphemeral();
-  const wire = await o.wire.offer();
+  const wire = await (o.wire ?? browserWire()).offer();
   const expiresAt = now() + (o.ttlMs ?? 600_000);
   const body = await seal(await deriveAes(root, utf8(id), "fsy offer"), `fsy1.o.${id}`, { sdp: wire.sdp, eph: toB64url(eph.pub), exp: expiresAt, name });
   const offer = formatText("o", id, body);
@@ -190,7 +192,7 @@ export async function pairDesktop(o: PairDesktopOptions): Promise<DesktopPairing
 }
 
 /** Answer a pairing on the phone, from the QR text or from the code plus the offer. */
-export async function pairPhone(input: string | { code: string; offer: string }, o: CommonOptions): Promise<PhonePairing> {
+export async function pairPhone(input: string | { code: string; offer: string }, o: CommonOptions = {}): Promise<PhonePairing> {
   const now = clock(o);
   const store = o.store ?? defaultStore();
   const name = o.name ?? "Phone";
@@ -204,14 +206,14 @@ export async function pairPhone(input: string | { code: string; offer: string },
   const exp = field<number>(value, "exp", "number");
   if (now() > exp + SKEW_MS) throw new FoxsyncError("expired", "the pairing code expired; ask the desktop for a new one");
   const eph = await newEphemeral();
-  const wire = await o.wire.answer(field(value, "sdp", "string"));
+  const wire = await (o.wire ?? browserWire()).answer(field(value, "sdp", "string"));
   const body = await seal(await deriveAes(root, utf8(id), "fsy answer"), `fsy1.a.${id}`, { sdp: wire.sdp, eph: toB64url(eph.pub), name });
   const answer = formatText("a", id, body);
   const shared = await ecdh(eph.key, fromB64url(field(value, "eph", "string")));
   const session = await sessionKeys(root, shared, offer, answer, "phone");
 
   const waitForDesktop = () =>
-    connect(wire, session.keys, id, { ...o, handshakeMs: Math.max(exp + SKEW_MS - now(), 1000) }, async (link) => {
+    connect(wire, session.keys, id, { ...o, handshakeMs: o.handshakeMs ?? Math.max(exp + SKEW_MS - now(), 1000) }, async (link) => {
       const me = await newIdentity();
       await sendHello(link, me.alg, me.pub, name);
       const desk = await readHello(link, o.handshakeMs ?? 30_000);
