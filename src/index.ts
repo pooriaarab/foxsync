@@ -5,3 +5,4 @@ export { newIdentity, supportsEd25519, type IdentityAlg } from "./crypto.js";
 export { formatCode, parseCode } from "./encoding.js";
 export { IdbStore, MemoryStore, listPairs, unpair, type PairInfo, type PairRecord, type Store } from "./store.js";
 export { pairDesktop, pairPhone, type CommonOptions, type DesktopPairing, type PairDesktopOptions, type PhonePairing, type Wire, type WireFactory } from "./pair.js";
+export { acceptReconnect, reconnect, type Answering, type Reconnecting } from "./reconnect.js";
