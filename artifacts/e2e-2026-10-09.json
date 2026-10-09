@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-10-09T04:59:23.639Z",
+  "startedAt": "2026-10-09T18:04:31.664Z",
   "desktop": "moz-extension page",
   "phone": "file:// page",
   "checks": [
     {
       "name": "E7 a pairing link shows the code first",
-      "expected": "V5XX-HGRH-PAX3-ZWAT-RDK8",
-      "actual": "V5XX-HGRH-PAX3-ZWAT-RDK8",
+      "expected": "9SYH-UDSC-8NRE-HSFH-JFCS",
+      "actual": "9SYH-UDSC-8NRE-HSFH-JFCS",
       "ok": true
     },
     {

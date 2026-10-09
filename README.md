@@ -162,11 +162,11 @@ The page pairs from the QR text, or from the code plus the offer. When the page 
 
 ### Demo extension
 
-`extension/` is a demo. Build it with `pnpm build:ext` and load `dist-ext/` as a temporary add-on. It opens as the toolbar popup or in the sidebar. Use the sidebar: a popup closes when it loses focus, and the link closes with it. The page can:
+`extension/` is a demo. Build it with `pnpm build:ext` and load `dist-ext/` as a temporary add-on. Install from AMO: [addons.mozilla.org/firefox/addon/foxsync](https://addons.mozilla.org/firefox/addon/foxsync/) (pending AMO review; the link works after approval). It opens as the toolbar popup or in the sidebar. Use the sidebar: a popup closes when it loses focus, and the link closes with it. The page can:
 
 - pair a phone: QR code, code, offer, and a box for the answer,
 - list paired devices, with Reconnect and Unpair,
-- send a test approval request and show the phone's answer.
+- send a sample approval request and show the phone's answer.
 
 ### Relay
 
