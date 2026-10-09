@@ -1,0 +1,19 @@
+body { font: 16px/1.45 system-ui, sans-serif; margin: 0; padding: 12px 14px 32px; color: #1c1b22; background: #f9f9fb; }
+header { position: sticky; top: 0; background: #f9f9fb; padding-bottom: 4px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 20px 0 8px; }
+section { background: #fff; border: 1px solid #e0e0e6; border-radius: 12px; padding: 4px 12px 12px; margin-top: 12px; }
+label { display: block; margin: 8px 0; font-size: 14px; color: #5b5b66; }
+input, textarea { display: block; width: 100%; box-sizing: border-box; font: 13px ui-monospace, monospace; padding: 8px; border: 1px solid #8f8f9d; border-radius: 8px; }
+button { font: inherit; min-height: 44px; padding: 8px 16px; margin: 6px 6px 0 0; border-radius: 10px; border: 1px solid #8f8f9d; background: #fbfbfe; }
+button.approve { background: #0f7b3e; color: #fff; border-color: #0f7b3e; }
+button.deny { background: #b3261e; color: #fff; border-color: #b3261e; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { padding: 8px 0; border-top: 1px solid #ececf0; }
+li:first-child { border-top: 0; }
+li .title { font-weight: 600; }
+li .detail { color: #5b5b66; font-size: 14px; }
+li .result { font-weight: 600; margin-top: 4px; }
+.empty { color: #8f8f9d; }
+output { font-weight: 600; }
+.status { font-size: 14px; color: #5b5b66; }
