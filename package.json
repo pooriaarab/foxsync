@@ -1,6 +1,6 @@
 {
   "name": "foxsync",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Control your Firefox agent from your phone over an encrypted peer-to-peer link.",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings",
     "test": "vitest run --passWithNoTests",
-    "ci:local": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:ext && pnpm lint:ext && pnpm build:phone",
+    "ci:local": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:ext && pnpm lint:ext && pnpm build:phone && pnpm check:amo",
     "build:ext": "node scripts/build-ext.mjs",
     "lint:ext": "web-ext lint -s dist-ext --warnings-as-errors",
+    "check:amo": "node scripts/amo-listing.mjs check",
     "e2e": "pnpm build:ext && pnpm build:phone && node e2e/run.mjs",
     "build:phone": "node scripts/build-phone.mjs"
   },
