@@ -61,3 +61,17 @@ pair key.
 | P5 | A MITM on the copy and paste path swaps or changes the offer or the answer (the SDP) | The other end rejects it with `bad-mac`, so the MITM cannot read or inject | `tests/pair.test.ts` P5 |
 | P6 | Two phones scan one QR code at the same time | The first answer wins; the second gets `used`. Two separate pairings at once both work | `tests/pair.test.ts` P6 |
 | P7 | The offer is too large for a QR code | `qr` is `null`; the phone pairs with the typed code plus the pasted offer | `tests/pair.test.ts` P7 |
+
+## Reconnect
+
+After pairing, either end can start a new session with the stored keys. A
+reconnect offer or answer is sealed with the pair key and signed with the
+sender's identity key. Its time must be newer than the last one accepted.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| R1 | The desktop page unloads (for example, the event page or the sidebar closes), so the link drops | The phone link closes with `peer-closed`; a reconnect with the stored keys gives a new working link | `tests/reconnect.test.ts` R1 |
+| R2 | Someone replays an old reconnect offer | The receiver rejects it with `replay` | `tests/reconnect.test.ts` R2 |
+| R3 | One end unpaired, and the other end tries to reconnect | The unpaired end rejects the offer with `unknown-pair` | `tests/reconnect.test.ts` R3 |
+| R4 | An attacker sends a reconnect offer signed with another key, or reflects a device's own offer back to it | The receiver rejects it with `bad-signature` | `tests/reconnect.test.ts` R4 |
+| R5 | A reconnect offer carries a time far from now (a held-back offer, or a wrong clock) | The receiver rejects it with `stale` | `tests/reconnect.test.ts` R5 |
