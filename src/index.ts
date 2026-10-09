@@ -1,2 +1,3 @@
-// The public API of foxsync. Replace this export with the real one.
-export const name = "foxsync";
+// The public API of foxsync.
+export { FoxsyncError, type FoxsyncErrorCode } from "./errors.js";
+export { Link, type LinkKeys, type LinkOptions, type Transport } from "./link.js";
