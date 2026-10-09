@@ -75,6 +75,8 @@ sender's identity key. Its time must be newer than the last one accepted.
 | R3 | One end unpaired, and the other end tries to reconnect | The unpaired end rejects the offer with `unknown-pair` | `tests/reconnect.test.ts` R3 |
 | R4 | An attacker sends a reconnect offer signed with another key, or reflects a device's own offer back to it | The receiver rejects it with `bad-signature` | `tests/reconnect.test.ts` R4 |
 | R5 | A reconnect offer carries a time far from now (a held-back offer, or a wrong clock) | The receiver rejects it with `stale` | `tests/reconnect.test.ts` R5 |
+| R6 | An end accepts a reconnect offer while its own reconnect waits for ICE gathering, and the late write puts back the old record | The newest accepted time stays; a replay of the accepted offer still fails with `replay` | `tests/reconnect.test.ts` R6 |
+| R7 | The same reconnect offer arrives twice at the same moment | One is accepted; the other fails with `replay` | `tests/reconnect.test.ts` R7 |
 
 ## WebRTC wire and approvals
 

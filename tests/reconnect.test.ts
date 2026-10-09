@@ -75,4 +75,26 @@ describe("reconnect", () => {
     now += 60 * 60_000;
     await expect(acceptReconnect(r.offer, { wire: s.wire, store: s.desk, now: () => now })).rejects.toMatchObject({ code: "stale" });
   });
+
+  it("R6 keeps the newest accepted time when a reconnect starts during gathering", async () => {
+    const { wire, desk, phone, d } = await paired();
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    const slow = { ...wire, offer: async () => (await gate, wire.offer()) };
+    const fromPhone = await reconnect(d.id, { wire, store: phone });
+    const ownStarting = reconnect(d.id, { wire: slow, store: desk });
+    await sleep(10);
+    await acceptReconnect(fromPhone.offer, { wire, store: desk });
+    release();
+    await ownStarting;
+    await expect(acceptReconnect(fromPhone.offer, { wire, store: desk })).rejects.toMatchObject({ code: "replay" });
+  });
+
+  it("R7 accepts one of two copies of an offer that arrive together", async () => {
+    const { wire, desk, phone, d } = await paired();
+    const r = await reconnect(d.id, { wire, store: phone });
+    const results = await Promise.allSettled([acceptReconnect(r.offer, { wire, store: desk }), acceptReconnect(r.offer, { wire, store: desk })]);
+    expect(results.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((x) => x.status === "rejected")).toMatchObject({ reason: { code: "replay" } });
+  });
 });
