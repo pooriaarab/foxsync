@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-10-09T04:10:39.078Z",
+  "checks": [
+    {
+      "name": "demo page lists no devices",
+      "expected": "No paired devices.",
+      "actual": "No paired devices.",
+      "ok": true
+    },
+    {
+      "name": "pairing shows a code",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    }
+  ],
+  "firefox": "firefox/157.0.1",
+  "passed": true
+}
