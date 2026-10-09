@@ -12,18 +12,13 @@
       }
     }
   },
-  "permissions": ["storage"],
-  "background": {
-    "scripts": ["background.js"]
-  },
   "action": {
     "default_title": "foxsync demo",
     "default_popup": "popup.html"
   },
-  "content_scripts": [
-    {
-      "matches": ["http://127.0.0.1/*"],
-      "js": ["content.js"]
-    }
-  ]
+  "sidebar_action": {
+    "default_title": "foxsync",
+    "default_panel": "popup.html",
+    "open_at_install": false
+  }
 }
