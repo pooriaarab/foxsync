@@ -1,0 +1,21 @@
+{
+  "default_locale": "en-US",
+  "slug": "foxsync",
+  "name": { "en-US": "foxsync — approve agent steps from your phone" },
+  "summary": {
+    "en-US": "Pair your phone with the browser over an encrypted peer-to-peer link, with no server. Send an approval request to the phone and see its answer. Messages are encrypted a second time with keys from the pairing."
+  },
+  "description": {
+    "en-US": "foxsync pairs a browser add-on with a phone, or with a second browser. The two ends talk over a WebRTC data channel. This add-on shows the foxsync library working, so developers can see it before they let a browser agent ask for approvals on a phone.\n\n**Who it is for:** developers who want a person to approve an AI agent's step from a phone, without a cloud service in the middle.\n\n**What it does**\n\n- Pair a phone: the add-on shows a QR code, a short code and an offer. The phone page answers, and you paste the answer back (or a relay that you run passes it).\n- Send a sample approval request. The phone shows it with Approve and Deny, and the add-on shows the answer.\n- List paired devices, reconnect and unpair.\n\nUse it in the sidebar: a popup closes when it loses focus, and the link closes with it.\n\n**Requirements:** the phone needs the foxsync phone page, which you host yourself (`pnpm build:phone` in the project). With no relay and no STUN server, both ends must be on the same network.\n\n**What leaves the browser, and when**\n\n- Only after you pair: messages go straight to the device that you paired, over WebRTC. Each message is encrypted and authenticated with keys from the pairing, on top of the WebRTC encryption.\n- Only if you type a relay URL: the pairing answer and reconnect offers go through that relay as sealed text. The relay sees box ids, IP addresses, times and sizes. It cannot read the texts. foxsync does not run a relay.\n- foxsync has no server and sends nothing to its authors.\n\n**Permissions:** none beyond the popup and the sidebar. Pair records and keys stay in this browser.\n\nThe source code is MIT licensed."
+  },
+  "categories": { "firefox": ["other"] },
+  "homepage": { "en-US": "https://github.com/pooriaarab/foxsync" },
+  "support_url": { "en-US": "https://github.com/pooriaarab/foxsync/issues" },
+  "version": {
+    "license": "MIT",
+    "approval_notes": "The uploaded source.zip is the git tree of this release. To build: install Node 24 and pnpm 11 (corepack enable), run `pnpm install --frozen-lockfile`, then `pnpm build:ext` (the add-on, output dist-ext/) and `pnpm build:phone` (the phone page, output dist-phone/). esbuild bundles extension/*.js with src/; the other files are copied unmodified. To try it without a phone: open the add-on in the sidebar, click Pair a phone, open dist-phone/index.html in a second Firefox window or profile, paste the offer and the code there, and paste the answer back. `pnpm e2e` does the same with two real Firefox instances. No account and no server are needed."
+  },
+  "privacy_policy": {
+    "en-US": "foxsync has no server. It sends nothing to its authors and has no analytics.\n\nAfter you pair a device, foxsync sends messages, such as approval requests and their answers, straight to that device over a WebRTC peer-to-peer link. Each message is encrypted and authenticated with keys from the pairing, on top of WebRTC's own encryption.\n\nIf you type a relay URL, foxsync sends the sealed pairing answer and reconnect offers through that relay. The relay is a server that you choose or run. It can see box ids, the IP addresses of both ends, the times and the size of each text. It cannot read the texts. foxsync does not provide a relay.\n\nPair records and keys stay in this browser. The phone page URL and the relay URL that you type stay in the add-on's local storage."
+  }
+}
