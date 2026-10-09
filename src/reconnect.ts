@@ -41,9 +41,28 @@ async function record(store: Store, id: string): Promise<PairRecord> {
 }
 
 /** Seal, then sign: body = signature(64) | sealed. */
+/**
+ * Run a read-modify-write of one pair record in a queue per store and pair,
+ * so two reconnects in this page cannot write back an old record and undo
+ * the newest time (docs/failure-modes.md R6, R7). The queue lives in this
+ * JavaScript realm: two pages that reconnect the same pair at the same
+ * moment are not serialized.
+ */
+const queues = new WeakMap<Store, Map<string, Promise<unknown>>>();
+function update<T>(store: Store, id: string, fn: (rec: PairRecord) => Promise<T>): Promise<T> {
+  let byId = queues.get(store);
+  if (!byId) queues.set(store, (byId = new Map()));
+  const run = (byId.get(id) ?? Promise.resolve()).catch(() => {}).then(async () => fn(await record(store, id)));
+  byId.set(id, run);
+  return run;
+}
+
 async function signed(rec: PairRecord, store: Store, kind: "ro" | "ra", sdp: string, eph: Bytes, now: number) {
-  const ts = Math.max(now, rec.lastOwnTs + 1);
-  await store.put({ ...rec, lastOwnTs: ts });
+  const ts = await update(store, rec.id, async (fresh) => {
+    const next = Math.max(now, fresh.lastOwnTs + 1);
+    await store.put({ ...fresh, lastOwnTs: next });
+    return next;
+  });
   const sealed = await seal(await deriveAes(rec.pairKey, utf8(rec.id), `fsy ${kind}`), `fsy1.${kind}.${rec.id}`, { sdp, eph: toB64url(eph), ts });
   const sig = await sign(rec.alg, rec.keys.privateKey, concat(utf8(`fsy1.${kind}.${rec.id}.`), sealed));
   return formatText(kind, rec.id, concat(sig, sealed));
@@ -61,9 +80,11 @@ async function checked(store: Store, text: string, kind: "ro" | "ra", id: string
   }
   const value = await open(await deriveAes(rec.pairKey, utf8(rec.id), `fsy ${kind}`), `fsy1.${kind}.${rec.id}`, sealed);
   const ts = field<number>(value, "ts", "number");
-  if (ts <= rec.lastPeerTs) throw new FoxsyncError("replay", "this reconnect text was used before");
   if (Math.abs(ts - now) > FRESH_MS) throw new FoxsyncError("stale", "the reconnect text is too old, or a clock is wrong");
-  await store.put({ ...rec, lastPeerTs: ts });
+  await update(store, rec.id, async (fresh) => {
+    if (ts <= fresh.lastPeerTs) throw new FoxsyncError("replay", "this reconnect text was used before");
+    await store.put({ ...fresh, lastPeerTs: ts });
+  });
   return { rec, text: formatText(kind, rec.id, parsed.body), sdp: field<string>(value, "sdp", "string"), eph: fromB64url(field(value, "eph", "string")) };
 }
 
