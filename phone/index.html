@@ -12,6 +12,14 @@
       <p>State: <output id="state">not linked</output></p>
     </header>
 
+    <section id="confirm-box" hidden>
+      <h2>Pair with this desktop?</h2>
+      <p>A link asks this phone to pair. Pair only if your desktop shows this code now:</p>
+      <p class="code" id="confirm-code"></p>
+      <button id="confirm-pair" type="button" class="approve">Pair</button>
+      <button id="confirm-cancel" type="button">Cancel</button>
+    </section>
+
     <section id="feed-box">
       <h2>From your desktop</h2>
       <ul id="feed"><li class="empty">Nothing yet.</li></ul>

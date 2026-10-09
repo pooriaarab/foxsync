@@ -85,7 +85,7 @@ try {
 
   // E1: pair by copy and paste, then one approval round trip.
   await click(D, "#pair");
-  const code = await poll(D, () => document.getElementById("code").textContent);
+  const code = await poll(D, (before) => document.getElementById("code").textContent !== before && document.getElementById("code").textContent, linkCode);
   await fill(P, "pair-input", await read(D, "offer"));
   await fill(P, "code", code);
   await click(P, "#pair");
