@@ -1,14 +1,76 @@
 {
-  "startedAt": "2026-10-09T04:10:39.078Z",
+  "startedAt": "2026-10-09T04:14:57.504Z",
+  "desktop": "moz-extension page",
+  "phone": "file:// page",
   "checks": [
     {
-      "name": "demo page lists no devices",
-      "expected": "No paired devices.",
-      "actual": "No paired devices.",
+      "name": "E1 desktop is linked",
+      "expected": "linked to Phone",
+      "actual": "linked to Phone",
       "ok": true
     },
     {
-      "name": "pairing shows a code",
+      "name": "E1 phone is linked",
+      "expected": "linked to Firefox desktop",
+      "actual": "linked to Firefox desktop",
+      "ok": true
+    },
+    {
+      "name": "E1 desktop lists the phone",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "E1 phone lists the desktop",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "E1 approval arrives authenticated",
+      "expected": "approve (authenticated)",
+      "actual": "approve (authenticated)",
+      "ok": true
+    },
+    {
+      "name": "E2 tampered answer is rejected",
+      "expected": "rejected: bad-mac",
+      "actual": "rejected: bad-mac",
+      "ok": true
+    },
+    {
+      "name": "E2 desktop closes the link",
+      "expected": "closed: bad-mac",
+      "actual": "closed: bad-mac",
+      "ok": true
+    },
+    {
+      "name": "E2 phone sees the close",
+      "expected": "closed: peer-closed",
+      "actual": "closed: peer-closed",
+      "ok": true
+    },
+    {
+      "name": "E4 reconnect links again",
+      "expected": "linked to Phone",
+      "actual": "linked to Phone",
+      "ok": true
+    },
+    {
+      "name": "E4 deny arrives authenticated",
+      "expected": "deny (authenticated)",
+      "actual": "deny (authenticated)",
+      "ok": true
+    },
+    {
+      "name": "E3 phone sees the desktop page close",
+      "expected": "closed: peer-closed",
+      "actual": "closed: peer-closed",
+      "ok": true
+    },
+    {
+      "name": "E5 phone rejects a reconnect after forget",
       "expected": true,
       "actual": true,
       "ok": true
