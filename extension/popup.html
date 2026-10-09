@@ -2,13 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>foxsync demo</title>
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <h1>foxsync</h1>
-    <p>Control your Firefox agent from your phone over an encrypted peer-to-peer link.</p>
-    <!-- Show foxsync working here. The E2E test reads #value. -->
-    <p>Status: <output id="value"></output></p>
+    <p class="hint">The link lives in this page. Open it in the sidebar so it stays open while you use your phone.</p>
+
+    <section>
+      <h2>Pair a phone</h2>
+      <label>Phone page URL (optional) <input id="phone-url" type="url" placeholder="https://example.org/foxsync/phone/" /></label>
+      <button id="pair" type="button">Pair a phone</button>
+      <div id="pairing" hidden>
+        <canvas id="qr" width="240" height="240" aria-label="QR code for the phone"></canvas>
+        <p>Code: <strong id="code"></strong></p>
+        <label>Offer (copy it to the phone) <textarea id="offer" rows="3" readonly></textarea></label>
+        <label>Answer from the phone <textarea id="answer" rows="3"></textarea></label>
+        <button id="connect" type="button">Connect</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Link</h2>
+      <p>State: <output id="state">not linked</output></p>
+      <button id="ask" type="button" disabled>Send a test approval request</button>
+      <p>Phone's answer: <output id="decision">none yet</output></p>
+    </section>
+
+    <section>
+      <h2>Paired devices</h2>
+      <ul id="pairs"></ul>
+      <div id="reconnecting" hidden>
+        <label>Reconnect offer (copy it to the phone) <textarea id="ro-offer" rows="3" readonly></textarea></label>
+        <label>Answer from the phone <textarea id="ro-answer" rows="3"></textarea></label>
+        <button id="ro-connect" type="button">Connect</button>
+      </div>
+    </section>
+
+    <p>Status: <output id="status">ready</output></p>
     <script src="popup.js"></script>
   </body>
 </html>
