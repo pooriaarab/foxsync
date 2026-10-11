@@ -30,10 +30,12 @@ function useLink(next, peerName) {
   link?.close();
   link = next;
   $("state").textContent = `linked to ${peerName}`;
+  $("state").dataset.state = "linked";
   $("ask").disabled = false;
   void next.closed.then((reason) => {
     if (link !== next) return;
     $("state").textContent = `closed: ${reason ? reason.code : "by this page"}`;
+    $("state").dataset.state = "closed";
     $("ask").disabled = true;
   });
 }
@@ -42,14 +44,16 @@ async function showPairs() {
   const list = $("pairs");
   list.replaceChildren();
   const pairs = await listPairs();
-  if (!pairs.length) list.append(Object.assign(document.createElement("li"), { textContent: "No paired devices." }));
+  if (!pairs.length) list.append(Object.assign(document.createElement("li"), { className: "empty", textContent: "No phone is paired yet." }));
   for (const pair of pairs) {
     const li = document.createElement("li");
     li.dataset.id = pair.id;
-    li.append(`${pair.peerName} (${pair.alg}) `);
-    const again = Object.assign(document.createElement("button"), { type: "button", textContent: "Reconnect" });
+    // The row text still starts with "<name> (<alg>)": the E2E reads it.
+    li.append(Object.assign(document.createElement("span"), { className: "name", textContent: `${pair.peerName} ` }));
+    li.append(Object.assign(document.createElement("span"), { className: "meta", textContent: `(${pair.alg}) ` }));
+    const again = Object.assign(document.createElement("button"), { type: "button", className: "small", textContent: "Reconnect" });
     again.addEventListener("click", () => startReconnect(pair).catch(fail));
-    const forget = Object.assign(document.createElement("button"), { type: "button", textContent: "Unpair" });
+    const forget = Object.assign(document.createElement("button"), { type: "button", className: "small danger", textContent: "Unpair" });
     forget.addEventListener("click", () => unpair(pair.id).then(showPairs).then(() => say(`unpaired ${pair.peerName}`), fail));
     li.append(again, forget);
     list.append(li);
@@ -115,13 +119,20 @@ $("ro-connect").addEventListener("click", async () => {
   }
 });
 
+// While the phone has the request, the answer row is a waiting callout.
+function showDecision(text, state) {
+  $("decision").textContent = text;
+  $("decision").dataset.state = state;
+  $("answer-row").classList.toggle("waiting", state === "waiting");
+}
+
 $("ask").addEventListener("click", async () => {
-  $("decision").textContent = "waiting";
+  showDecision("waiting", "waiting");
   try {
     const decision = await askApproval(link, { title: "Sample approval", detail: `Sent at ${new Date().toLocaleTimeString()}` });
-    $("decision").textContent = `${decision} (authenticated)`;
+    showDecision(`${decision} (authenticated)`, decision);
   } catch (error) {
-    $("decision").textContent = `rejected: ${error?.code ?? error}`;
+    showDecision(`rejected: ${error?.code ?? error}`, "rejected");
   }
 });
 
