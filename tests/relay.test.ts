@@ -132,3 +132,21 @@ describe("relay worker", () => {
     expect([response.status, response.headers.get("access-control-allow-origin"), keys, opened]).toEqual([429, "*", ["198.51.100.7"], 0]);
   });
 });
+
+describe("relay poll", () => {
+  it("Y10 stops polling the relay when the pairing is cancelled", async () => {
+    let gets = 0;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? "GET") === "GET") gets++;
+      return handle(new Request(input, init), store(), now);
+    });
+    const d = await pairDesktop({ wire: memoryWire(), store: new MemoryStore(), relay: RELAY, relayPollMs: 20 });
+    const waiting = d.waitForPhone();
+    await vi.waitFor(() => expect(gets).toBeGreaterThan(1));
+    d.cancel();
+    await expect(waiting).rejects.toMatchObject({ code: "used" });
+    const after = gets;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(gets).toBe(after);
+  });
+});
