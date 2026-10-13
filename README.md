@@ -156,7 +156,7 @@ Options for the pairing and reconnect functions:
 
 `phone/` is a static page for phones. Build it with `pnpm build:phone`. The output in `dist-phone/` is one HTML file, one CSS file and one classic script. It runs on a static host, and from `file://` for tests.
 
-The page is live at <https://foxsync-phone.hello-fd1.workers.dev>. Pass that URL as `phoneUrl`, so a phone camera opens the page from the QR code. `.github/workflows/deploy.yml` deploys it from `host/wrangler.toml` on each push to `release`.
+The page is live at <https://foxsync-phone.hello-fd1.workers.dev>. Pass that URL as `phoneUrl`, so a phone camera opens the page from the QR code. `.github/workflows/deploy.yml` deploys it from `host/wrangler.toml` on each push to `release`. A push to `release` also runs `release.yml`, which needs a new package version, so a page or relay fix ships with a version bump. The page's CSP lets it reach the hosted relay only.
 
 Host the page on an origin of its own, for example `phone.example.org`. The pair records and keys are in the IndexedDB of that origin. Every other page on the same origin can read the records and use the keys. A project page on a shared origin, such as `<user>.github.io/<repo>`, is not safe.
 

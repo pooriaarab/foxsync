@@ -7,7 +7,6 @@ name: Deploy
 on:
   push:
     branches: [release]
-  workflow_dispatch:
 
 concurrency:
   group: deploy
@@ -20,11 +19,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      # Only the two deploy steps get the token: install and ci:local run
+      # npm code that must not read a Workers Scripts Write token.
       - name: Refuse to run without the Cloudflare token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "::error::Set the secret CLOUDFLARE_API_TOKEN (Workers Scripts Write) and the variable CLOUDFLARE_ACCOUNT_ID."
@@ -39,9 +40,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm ci:local
       - name: Deploy the relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         working-directory: relay
         run: pnpm dlx wrangler@4.150.0 deploy
       - name: Deploy the phone page
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         working-directory: host
         run: pnpm dlx wrangler@4.150.0 deploy
       - name: Check the live URLs
