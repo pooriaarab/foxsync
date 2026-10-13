@@ -223,7 +223,7 @@ The library uses no WebExtension API, so it also runs in a normal page. The link
 - **Tested in Firefox only.** The E2E runs two Firefox 157 instances on one Mac, with the phone page at a phone-sized viewport. Safari, Chrome and real phones are not tested.
 - **Reconnects from two pages at once.** Each page keeps the updates of a pair record in order. Two pages of one origin that reconnect the same pair at the same moment do not.
 - **One link per pair at a time.** There is no fan-out to many phones in one call.
-- **The relay has no rate limit.** Add a Cloudflare rate limiting rule if you run one in public.
+- **The relay limits each address to 600 requests a minute.** Above that, it answers 429.
 
 ## Testing
 

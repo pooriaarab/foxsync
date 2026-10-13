@@ -1,7 +1,8 @@
-// The optional foxsync relay as a Cloudflare Worker. One Durable Object per
-// box keeps its texts, and an alarm deletes them after 10 minutes.
-// Deploy from this folder: npx wrangler deploy
-import { TTL_MS, boxOf, handle, type Stored } from "./handler.js";
+// The foxsync relay as a Cloudflare Worker. One Durable Object per box
+// keeps its texts, and an alarm deletes them after 10 minutes. A rate
+// limit per address stops one client from flooding it (Y9).
+// .github/workflows/deploy.yml deploys it on a push to release.
+import { TTL_MS, boxOf, handle, tooMany, type Stored } from "./handler.js";
 
 interface DurableObjectStorage {
   get<T>(key: string): Promise<T | undefined>;
@@ -14,6 +15,7 @@ interface DurableObjectState {
   storage: DurableObjectStorage;
 }
 interface Env {
+  LIMIT: { limit(options: { key: string }): Promise<{ success: boolean }> };
   BOXES: { idFromName(name: string): unknown; get(id: unknown): { fetch(request: Request): Promise<Response> } };
 }
 
@@ -42,6 +44,8 @@ export class Box {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const { success } = await env.LIMIT.limit({ key: request.headers.get("cf-connecting-ip") ?? "" });
+    if (!success) return tooMany();
     const box = boxOf(request);
     if (!box) return handle(request, { get: async () => undefined, put: async () => {}, delete: async () => {} }, Date.now());
     return env.BOXES.get(env.BOXES.idFromName(box)).fetch(request);

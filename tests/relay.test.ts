@@ -118,3 +118,17 @@ describe("pairing and reconnect through the relay", () => {
     expect(links.every((l) => l.isOpen)).toBe(true);
   });
 });
+
+describe("relay worker", () => {
+  it("Y9 answers 429 with CORS headers when one address goes over the limit", async () => {
+    const { default: worker } = await import("../relay/worker.js");
+    const keys: string[] = [];
+    let opened = 0;
+    const env = {
+      LIMIT: { limit: async ({ key }: { key: string }) => (keys.push(key), { success: false }) },
+      BOXES: { idFromName: () => (opened++, "id"), get: () => ({ fetch: async () => new Response(null, { status: 204 }) }) },
+    };
+    const response = await worker.fetch(new Request(`${RELAY}/v1/${box}/a`, { headers: { "cf-connecting-ip": "198.51.100.7" } }), env);
+    expect([response.status, response.headers.get("access-control-allow-origin"), keys, opened]).toEqual([429, "*", ["198.51.100.7"], 0]);
+  });
+});
