@@ -30,6 +30,9 @@ const CORS = {
 const reply = (status: number, body: string | null = null) =>
   new Response(body, { status, headers: { ...CORS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 
+/** The answer when one address sends too many requests. */
+export const tooMany = () => reply(429, "too many requests");
+
 /** The box name for a request, or null when the path is not a relay route. */
 export function boxOf(request: Request): string | null {
   return ROUTE.exec(new URL(request.url).pathname)?.[1] ?? null;
