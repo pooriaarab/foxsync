@@ -68,7 +68,8 @@ docs/failure-modes.md  every way the code can fail, written before the code
 .github/          CI, release, PR and issue standards
 extension/        the demo extension (popup and sidebar) that pairs a phone
 phone/            the static phone page, built to dist-phone/
-relay/            the optional Cloudflare Worker relay (not deployed here)
+relay/            the Cloudflare Worker relay, deployed by .github/workflows/deploy.yml
+host/             the Worker that serves dist-phone/ on its own origin
 scripts/build-ext.mjs    bundles extension/ into dist-ext/ with esbuild
 scripts/build-phone.mjs  bundles phone/ into dist-phone/ (one classic script)
 e2e/run.mjs       the two-Firefox E2E test; writes artifacts/e2e-<date>.json
