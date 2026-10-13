@@ -7,7 +7,12 @@ import { FoxsyncError, type FoxsyncErrorCode } from "./errors.js";
 
 export type Slot = "o" | "a";
 const SKIP = new Set<FoxsyncErrorCode>(["bad-input", "bad-mac", "bad-signature", "replay", "stale"]);
-const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+/** Wait ms, or less when the signal aborts. */
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((done) => {
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", () => (clearTimeout(timer), done()), { once: true });
+  });
 const url = (base: string, box: string, slot: Slot) => `${base.replace(/\/+$/, "")}/v1/${box}/${slot}`;
 
 /** The box id: 16 bytes from HKDF over the root and the pairing id. */
@@ -22,20 +27,23 @@ export async function relayPut(base: string, box: string, slot: Slot, text: stri
 
 /**
  * Poll the box until use(text) succeeds. Each text is deleted after it is
- * read. A text that fails as forged, replayed or stale is skipped.
+ * read. A text that fails as forged, replayed or stale is skipped. When
+ * the signal aborts, the poll stops at once and rejects with its reason (Y10).
  */
-export async function relayTake<T>(base: string, box: string, slot: Slot, use: (text: string) => Promise<T>, waitMs: number, pollMs: number): Promise<T> {
+export async function relayTake<T>(base: string, box: string, slot: Slot, use: (text: string) => Promise<T>, waitMs: number, pollMs: number, signal?: AbortSignal): Promise<T> {
   const deadline = Date.now() + waitMs;
   let last = "no text arrived";
   for (;;) {
+    signal?.throwIfAborted();
     let text: string | null = null;
     try {
-      const response = await fetch(url(base, box, slot));
+      const response = await fetch(url(base, box, slot), { signal });
       if (response.ok) {
         text = await response.text();
         await fetch(url(base, box, slot), { method: "DELETE" });
       }
     } catch (error) {
+      signal?.throwIfAborted();
       last = `the relay is not reachable: ${error instanceof Error ? error.message : String(error)}`;
     }
     if (text !== null) {
@@ -47,6 +55,6 @@ export async function relayTake<T>(base: string, box: string, slot: Slot, use: (
       }
     }
     if (Date.now() + pollMs > deadline) throw new FoxsyncError("timeout", `nothing usable from the relay within ${waitMs} ms (${last})`);
-    await sleep(pollMs);
+    await sleep(pollMs, signal);
   }
 }
