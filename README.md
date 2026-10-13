@@ -156,6 +156,8 @@ Options for the pairing and reconnect functions:
 
 `phone/` is a static page for phones. Build it with `pnpm build:phone`. The output in `dist-phone/` is one HTML file, one CSS file and one classic script. It runs on a static host, and from `file://` for tests.
 
+The page is live at <https://foxsync-phone.hello-fd1.workers.dev>. Pass that URL as `phoneUrl`, so a phone camera opens the page from the QR code. `.github/workflows/deploy.yml` deploys it from `host/wrangler.toml` on each push to `release`.
+
 Host the page on an origin of its own, for example `phone.example.org`. The pair records and keys are in the IndexedDB of that origin. Every other page on the same origin can read the records and use the keys. A project page on a shared origin, such as `<user>.github.io/<repo>`, is not safe.
 
 The page pairs from the QR text, or from the code plus the offer. When the page URL has the pairing text in its fragment, the page shows the code and waits. It pairs only after you press Pair. Make sure that the code is the one on your desktop, because anyone can send you such a link. The fragment never goes to the web server. Then the page shows `note` messages (`{ text }`) and approval requests with Approve and Deny. It also answers reconnect offers and lists paired devices.
@@ -172,7 +174,7 @@ The page pairs from the QR text, or from the code plus the offer. When the page 
 
 ### Relay
 
-`relay/` is an optional Cloudflare Worker. This repo does not deploy it. To run your own, run `npx wrangler deploy` in `relay/`. It keeps one text per box and slot for 10 minutes. It takes only foxsync text up to 16 KiB.
+`relay/` is an optional Cloudflare Worker. A public copy runs at <https://foxsync-relay.hello-fd1.workers.dev>, deployed by `.github/workflows/deploy.yml` on each push to `release`. To run your own, run `npx wrangler deploy` in `relay/`. It keeps one text per box and slot for 10 minutes. It takes only foxsync text up to 16 KiB.
 
 With a relay, the phone posts its pairing answer, and the desktop picks it up. Nobody copies the answer back. Reconnects can go through it too.
 
@@ -217,7 +219,6 @@ The library uses no WebExtension API, so it also runs in a normal page. The link
 - **No STUN or TURN.** foxsync does not provide them. Across networks, give STUN servers to `browserWire`. Through a strict NAT, you need a TURN server.
 - **The link lives in one page.** When the page closes, the link closes. Call `reconnect` to start a new one.
 - **The phone page has no camera scanner.** A phone camera app opens the QR code only when `phoneUrl` points to a hosted phone page. Without it, paste the QR text. The desktop cannot scan a QR code from the phone either.
-- **The phone page is not hosted yet.** Put `dist-phone/` on a static host with its own origin.
 - **The add-on and the phone page reconnect by copy and paste only.** Reconnect through the relay works in the API, but the pages have no button for it.
 - **Tested in Firefox only.** The E2E runs two Firefox 157 instances on one Mac, with the phone page at a phone-sized viewport. Safari, Chrome and real phones are not tested.
 - **Reconnects from two pages at once.** Each page keeps the updates of a pair record in order. Two pages of one origin that reconnect the same pair at the same moment do not.
