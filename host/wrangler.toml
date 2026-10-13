@@ -1,0 +1,10 @@
+# The phone page at https://foxsync-phone.hello-fd1.workers.dev. It has an
+# origin of its own: pair records and keys live in the IndexedDB of this
+# origin, so no other page may share it.
+# .github/workflows/deploy.yml deploys it on a push to release.
+name = "foxsync-phone"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[assets]
+directory = "../dist-phone"
