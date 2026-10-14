@@ -1,6 +1,6 @@
 {
   "name": "foxsync",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Encrypted WebRTC device pairing, phone approvals, and signed reconnects for Firefox browser agents, with IndexedDB storage and an optional Cloudflare relay.",
   "type": "module",
   "license": "MIT",
