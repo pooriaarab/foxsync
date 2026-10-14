@@ -1,124 +1,133 @@
 # foxsync
 
-Control your Firefox agent from your phone over an encrypted peer-to-peer link.
+[![npm version](https://img.shields.io/npm/v/foxsync)](https://www.npmjs.com/package/foxsync)
+[![Downloads/month](https://img.shields.io/npm/dm/foxsync)](https://www.npmjs.com/package/foxsync)
+[![License: MIT](https://img.shields.io/npm/l/foxsync)](https://github.com/pooriaarab/foxsync/blob/main/LICENSE)
+[![Zero runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-blue)](https://www.npmjs.com/package/foxsync)
 
-foxsync pairs a Firefox extension with a phone, or with any second browser. The two ends talk over a WebRTC data channel. Every message is encrypted and authenticated a second time, on top of DTLS, with keys from the pairing. Version 0.1 needs no server.
+[Setup](#send-your-first-approval) · [API reference](#runtime-surfaces) · [Comparisons](#compare) · [Phone page](https://foxsync-phone.hello-fd1.workers.dev)
+
+foxsync is an open-source browser pairing and encrypted messaging library for Firefox agents and second-screen approval flows.
+It connects two browser pages through a WebRTC data channel.
+It adds authenticated encryption, stored device pairs, and signed reconnects.
 
 ## Install
 
 ```bash
-npm i foxsync
+npm install foxsync
 ```
 
-foxsync runs in a browser page: an extension page, a sidebar, or a normal web page. It uses WebRTC, Web Crypto and IndexedDB.
+The package declares Node.js 24 or later. Bundle imports for a browser page with WebRTC, Web Crypto, and IndexedDB.
+TypeScript declarations are included. There are zero runtime dependencies.
 
-## Example
+## Send your first approval
 
-On the desktop, in an extension page or a sidebar:
+Use the shipped demo for a complete browser flow. No API keys or environment variables are required.
+
+```bash
+git clone https://github.com/pooriaarab/foxsync.git
+cd foxsync
+pnpm install --frozen-lockfile
+pnpm build:ext
+```
+
+1. In Firefox, open `about:debugging`, then load `dist-ext/manifest.json` as a temporary add-on.
+2. Open foxsync in the sidebar. Keep the sidebar open throughout pairing.
+3. Open the [phone page](https://foxsync-phone.hello-fd1.workers.dev) in another Firefox browser on the same network.
+4. Leave the relay field empty. Start pairing in the sidebar.
+5. Copy the offer and code to the phone page. Press Pair.
+6. Copy the phone's answer to the sidebar. Press Connect.
+7. Send the sample approval request. Press Approve on the phone page.
+
+Success shows `approve (authenticated)` in the sidebar.
+The default connection uses host candidates only. Network rules can prevent a connection even on shared Wi-Fi.
+
+For application code, bundle these imports into your own browser pages:
 
 ```js
 import { askApproval, pairDesktop } from "foxsync";
 
 const pairing = await pairDesktop({ name: "My laptop" });
-console.log(pairing.qr); // put this text in a QR code, or show pairing.code and pairing.offer
-const link = await pairing.waitForPhone(prompt("Paste the answer from the phone"));
-
-const decision = await askApproval(link, { title: "Send the email to Sam?" });
-console.log(decision); // "approve" or "deny"
+console.log(pairing.code, pairing.offer); // copy both to the phone
+const link = await pairing.waitForPhone(prompt("Paste the phone answer"));
+console.log(await askApproval(link, { title: "Send the email?" }));
 ```
-
-On the phone, in any page that bundles foxsync:
 
 ```js
 import { onApprovalRequest, pairPhone } from "foxsync";
 
-const pairing = await pairPhone(prompt("Paste the QR text"));
-console.log(pairing.answer); // give this text to the desktop
+const pairing = await pairPhone({
+  code: prompt("Desktop code"),
+  offer: prompt("Desktop offer"),
+});
+console.log(pairing.answer); // copy to the desktop
 const link = await pairing.waitForDesktop();
-onApprovalRequest(link, (request) => (confirm(request.title) ? "approve" : "deny"));
+onApprovalRequest(link, request => confirm(request.title) ? "approve" : "deny");
 ```
-
-You do not have to write the phone side. The [phone page](#phone-page) in `phone/` does it.
-
-## Use cases
-
-| Who | What they build | How foxsync helps |
-|---|---|---|
-| A user of a browser agent such as foxmate | Approve or deny agent actions from the phone | The agent calls `askApproval`. The phone page shows Approve and Deny. The answer comes back authenticated. |
-| A developer of a long agent task | Notifications from a task that runs for an hour | The extension sends `note` messages. The phone page shows them in a feed. |
-| A person who keeps Firefox running at home | Remote control of the home Firefox from the phone | The phone sends commands over the link. Across networks this needs the relay and a TURN server (see [Limits](#limits)). |
-| A presenter | A second screen: next slide, previous slide, timer | The phone sends `next` and `previous` messages. The extension moves the slides in the presentation tab. |
-| A family member or a caregiver | Help for a parent who uses an agent | The helper pairs a phone with the parent's Firefox and answers approval requests for risky actions. |
-| A QA engineer | A test run that waits for a person to confirm a step | The test asks on the phone and goes on when the person approves. |
 
 ## How it works
 
-```mermaid
-flowchart LR
-  subgraph Desktop["Firefox desktop"]
-    ext["Extension page or sidebar<br/>pairDesktop, askApproval"]
-    idb1[("IndexedDB<br/>pair record, keys")]
-  end
-  subgraph Phone["Phone browser"]
-    page["Phone page<br/>pairPhone, Approve or Deny"]
-    idb2[("IndexedDB<br/>pair record, keys")]
-  end
-  ext <-->|"WebRTC data channel (DTLS)<br/>AES-GCM frames inside"| page
-  ext -.->|"QR code, or code plus offer"| page
-  page -.->|"answer: copy and paste, or relay"| ext
-  relay["Optional relay<br/>sealed text only"]
-  page -.-> relay -.-> ext
-  ext --- idb1
-  page --- idb2
+```text
+Desktop page <-- WebRTC data channel + AES-GCM frames --> Phone page
+     |                                                      |
+ IndexedDB                                              IndexedDB
+     |                                                      |
+     +--- sealed offers / answers: copy-paste or relay ------+
 ```
 
-Pairing has two steps and needs no server:
+Pairing uses a 100-bit one-time code with a ten-minute default lifetime.
+Session keys combine the code, fresh elliptic-curve key exchange, and the offer/answer transcript.
+Reconnects use stored pair keys and identity signatures.
 
-```mermaid
-sequenceDiagram
-  participant D as Desktop (extension)
-  participant P as Phone page
-  D->>D: Make a 100-bit one-time code, an ECDH key and a WebRTC offer
-  D->>D: Seal the offer with a key from the code
-  D-->>P: QR code: code + sealed offer (or type the code, paste the offer)
-  P->>P: Open the offer. Make an ECDH key and a WebRTC answer
-  P-->>D: Sealed answer (copy and paste, or through the relay)
-  D->>D: Open the answer. Burn the code
-  Note over D,P: Session keys = HKDF(code, ECDH secret, hash of offer and answer text)
-  D->>P: WebRTC connects (DTLS)
-  P->>D: hello: phone identity key (Ed25519, or ECDSA P-256)
-  D->>P: hello: desktop identity key
-  Note over D,P: Both ends store a pair record with a shared pair key
-```
+## Why it exists
 
-An approval round trip:
+Browser agents need a way to ask a person on another device before they act.
+foxsync supplies pairing and approval messages for that flow.
+PeerJS and simple-peer provide general WebRTC connections; foxsync adds its device-pair and approval protocol.
 
-```mermaid
-sequenceDiagram
-  participant A as Agent (desktop)
-  participant L as Link
-  participant P as Phone page
-  A->>L: askApproval(link, { title })
-  L->>P: approval.request { id, title } (frame n, AES-GCM)
-  P->>P: Show Approve and Deny
-  P->>L: approval.answer { id, decision } (frame m, AES-GCM)
-  L->>A: "approve" or "deny"
-  Note over L: A changed, repeated or reordered frame closes the link
-```
+## Compare
 
-Details:
+Checked on 2026-10-14 against [PeerJS's guide](https://peerjs.com/client/getting-started)
+and [simple-peer's README](https://github.com/feross/simple-peer).
 
-- **The code.** It has 20 characters from a 32-character set, so 100 random bits. It is valid for 10 minutes and works once. After 3 wrong answers, the pairing stops.
-- **Sealed text.** The offer and the answer are compressed, then sealed with AES-GCM. Their kind and pairing id are authenticated. The offer is safe to send over any channel, because it is useless without the code. Keep the QR code private: it holds the code.
-- **Keys.** Session keys come from the code (or, later, the pair key), a new ECDH P-256 secret, and a hash of the exact offer and answer text. That text holds the DTLS fingerprints. So a swapped SDP gives other keys, and the first frame fails.
-- **Frames.** Each message is a frame: version, sequence number, AES-256-GCM ciphertext. Each direction has its own key. The channel is ordered and reliable, so the receiver closes the link on a bad tag (`bad-mac`), an old sequence number (`replay`) or a skipped one (`reorder`).
-- **Heartbeats.** Each end sends a heartbeat after 5 seconds without traffic. After 15 seconds without a frame, the link closes with `timeout`. This finds a phone that lost its network.
-- **Identity keys.** After the channel opens, each end makes a key pair for this pair only. It uses Ed25519 when the phone has it, else ECDSA P-256. The private keys are not extractable.
-- **Reconnect.** Either end can start. The reconnect offer and answer are sealed with the pair key and signed with the identity key. Each end saves the newest time it accepted, so a replayed offer fails.
+| Scope | foxsync | PeerJS | simple-peer |
+|---|---|---|---|
+| Main surface | Pairing, reconnects, approval messages | Peer data, audio, video connections | WebRTC data, voice, video channels |
+| Connection setup | Sealed offer/answer text or optional relay | Peer IDs and signaling server | Application transfers signal data |
+| Configuration | Pair options and browserWire | Peer configuration | Peer constructor options |
 
-Every failure mode and its test is in [docs/failure-modes.md](docs/failure-modes.md).
+## Coverage
 
-## API
+| Integration or surface | Status | Scope |
+|---|---|---|
+| Mozilla Firefox | ✓ | Extension sidebar and browser pairing demo |
+| WebRTC / Web Crypto | ✓ | Data channel and application encryption |
+| IndexedDB | ✓ | Default pair-record storage |
+| Cloudflare Workers | ✓ | Optional relay and static phone-page host |
+| Apple Safari / Google Chrome | — | No browser verification claimed |
+| foxmate / foxgate | scaffold | Planned consumers; no runtime adapters exported |
+
+Source inspection confirms four implemented surfaces and two planned consumers.
+Local tests exercise protocol behavior. This rewrite does not claim real-phone or cross-network verification.
+There is one built-in wire factory and two pair-store implementations. There is no provider registry.
+
+## Common use cases
+
+1. Firefox agent builders: ask for phone approval before a browser action.
+2. WebRTC application authors: exchange typed messages between two paired browser pages.
+3. QA teams: pause a browser workflow for an approve-or-deny response.
+4. Extension authors: keep a paired connection in a Firefox sidebar.
+5. Cloudflare users: deploy a relay for sealed signaling text.
+
+## Features
+
+- **Device pairing:** share a code and sealed offer with [the setup flow](#send-your-first-approval).
+- **Authenticated messages:** send typed payloads through [Link](#runtime-surfaces).
+- **Reconnects:** authenticate stored pairs with [reconnect and acceptReconnect](#runtime-surfaces).
+- **Approvals:** use [askApproval and onApprovalRequest](#runtime-surfaces).
+- **Pair storage:** choose [IndexedDB or MemoryStore](#runtime-surfaces).
+
+## Runtime surfaces
 
 foxsync is a library. It has no CLI and no MCP server.
 
@@ -152,68 +161,9 @@ Options for the pairing and reconnect functions:
 | `handshakeMs` | 30000 | How long to wait for the channel and the hello messages. |
 | `link` | `{}` | `heartbeatMs` (5000), `timeoutMs` (15000), `maxBytes` (65536). |
 
-### Phone page
 
-`phone/` is a static page for phones. Build it with `pnpm build:phone`. The output in `dist-phone/` is one HTML file, one CSS file and one classic script. It runs on a static host, and from `file://` for tests.
-
-The page is live at <https://foxsync-phone.hello-fd1.workers.dev>. Pass that URL as `phoneUrl`, so a phone camera opens the page from the QR code. `.github/workflows/deploy.yml` deploys it from `host/wrangler.toml` on each push to `release`. A push to `release` also runs `release.yml`, which needs a new package version, so a page or relay fix ships with a version bump. The page's CSP lets it reach the hosted relay only.
-
-Host the page on an origin of its own, for example `phone.example.org`. The pair records and keys are in the IndexedDB of that origin. Every other page on the same origin can read the records and use the keys. A project page on a shared origin, such as `<user>.github.io/<repo>`, is not safe.
-
-The page pairs from the QR text, or from the code plus the offer. When the page URL has the pairing text in its fragment, the page shows the code and waits. It pairs only after you press Pair. Make sure that the code is the one on your desktop, because anyone can send you such a link. The fragment never goes to the web server. Then the page shows `note` messages (`{ text }`) and approval requests with Approve and Deny. It also answers reconnect offers and lists paired devices.
-
-### The extension
-
-`extension/` is the foxsync add-on. Build it with `pnpm build:ext` and load `dist-ext/` as a temporary add-on. Install from AMO: [addons.mozilla.org/firefox/addon/foxsync](https://addons.mozilla.org/firefox/addon/foxsync/) (pending AMO review; the link works after approval). It opens as the toolbar popup or in the sidebar. Use the sidebar: a popup closes when it loses focus, and the link closes with it. The page can:
-
-- pair a phone: QR code, code, offer, and a box for the answer,
-- list paired devices, with Reconnect and Unpair,
-- send a sample approval request and show the phone's answer.
-
-[docs/amo-data.md](docs/amo-data.md) lists what the add-on sends out of the browser, and why its manifest declares no AMO data type.
-
-### Relay
-
-`relay/` is an optional Cloudflare Worker. A public copy runs at <https://foxsync-relay.hello-fd1.workers.dev>, deployed by `.github/workflows/deploy.yml` on each push to `release`. To run your own, run `npx wrangler deploy` in `relay/`. It keeps one text per box and slot for 10 minutes. It takes only foxsync text up to 16 KiB.
-
-With a relay, the phone posts its pairing answer, and the desktop picks it up. Nobody copies the answer back. Reconnects can go through it too.
-
-What the relay can see:
-
-- the box ids, which stay the same for one pair across reconnects,
-- the IP addresses of both ends, the times, and the size of each text.
-
-What the relay cannot do:
-
-- read the SDP (with your IP candidates), the keys, or any message, because each text is sealed,
-- make an offer or an answer that an end accepts, because it does not know the code or the pair key,
-- change a message on the link, because messages do not go through it.
-
-The relay can drop or delay texts. It can also fill a box with junk, which costs a pairing attempt each time.
-
-## Firefox APIs used
-
-| API | Why |
-|---|---|
-| [`RTCPeerConnection`](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection) | The peer-to-peer connection. No ICE servers by default. |
-| [`RTCDataChannel`](https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel) | One ordered, reliable channel for the encrypted frames. |
-| [`SubtleCrypto.sign`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/sign) / [`verify`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/verify) (Ed25519, ECDSA P-256) | Identity signatures on reconnect text. Ed25519 is in Firefox 129 and later. |
-| [`SubtleCrypto.generateKey`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey) | Non-extractable identity keys and one-use ECDH keys. |
-| [`SubtleCrypto.deriveBits`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveBits) / [`deriveKey`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey) (ECDH, HKDF) | Session keys, the pair key and relay box ids. |
-| [`SubtleCrypto.encrypt`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt) / [`decrypt`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/decrypt) (AES-GCM) | Sealed text and the encrypted frames. |
-| [`SubtleCrypto.digest`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest) (SHA-256) | The hash of the offer and answer text. |
-| [`Crypto.getRandomValues`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues) | The code, ids and nonces. |
-| [`CompressionStream`](https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream) / [`DecompressionStream`](https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream) | Shorter offer text, so it fits in a QR code. |
-| [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | Pair records. It stores `CryptoKey` objects without their bytes. |
-| [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch) | The optional relay. |
-| [`sidebar_action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/sidebar_action) | Extension: the sidebar keeps the link open. |
-| [`action`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/action) | Extension: the toolbar popup. |
-| [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) | Extension: draws the QR code (with [uqr](https://github.com/unjs/uqr)). |
-| [`Clipboard.writeText`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) | Phone page: the Copy button for the answer. |
-
-The library uses no WebExtension API, so it also runs in a normal page. The link must live in a page that stays open. The MV3 background is an event page, and it unloads when idle. That drops the link, so use the sidebar or a pinned tab.
-
-## Limits
+`newIdentity`, `supportsEd25519`, `formatCode`, `parseCode`, and the `Link` class are also public exports.
+## Delivery/behavior limits
 
 - **No server means the same network, or manual text.** With no ICE servers, WebRTC uses host candidates only. Both ends must reach each other directly, for example on one Wi-Fi network.
 - **No STUN or TURN.** foxsync does not provide them. Across networks, give STUN servers to `browserWire`. Through a strict NAT, you need a TURN server.
@@ -225,23 +175,88 @@ The library uses no WebExtension API, so it also runs in a normal page. The link
 - **One link per pair at a time.** There is no fan-out to many phones in one call.
 - **The relay limits each address to 600 requests a minute.** Above that, it answers 429.
 
+## Integration guides
+
+### Firefox sidebar and phone page
+
+Build the extension with `pnpm build:ext`. Build the static phone page with `pnpm build:phone`.
+Use a dedicated origin for the phone page. Same-origin scripts can use its stored keys.
+The sidebar must stay open; a popup closes when it loses focus.
+The phone page has no camera scanner. Paste the code and offer, or use a camera app with `phoneUrl`.
+
+### Optional Cloudflare relay
+
+A [public relay](https://foxsync-relay.hello-fd1.workers.dev/v1/AAAAAAAAAAAAAAAAAAAAAA/a) accepts sealed signaling text.
+An empty box returns 404. Deploy your own Worker with `npx wrangler deploy` from `relay/`.
+Set `relay` in `pairDesktop` options, or enter its URL in the demo's relay field.
+The relay retains each text for ten minutes and accepts at most 16 KiB per text.
+It sees box IDs, IP addresses, timing, and text sizes. It can drop, delay, or replace sealed text.
+Messages travel through WebRTC. A signaling relay does not provide TURN connectivity.
+
+### Custom WebRTC configuration
+
+Provide `wire: browserWire({ iceServers: [...] })` with your own server configuration.
+STUN means Session Traversal Utilities for NAT. TURN means Traversal Using Relays around NAT.
+NAT means network address translation. Strict network rules can require a TURN server.
+
+## Status
+
+Version 0.1.4 is an early release. APIs and pairing formats can change before 1.0.
+[Report issues on GitHub](https://github.com/pooriaarab/foxsync/issues).
+Public case studies are not yet published in this repository.
+
+## FAQ
+
+### What is foxsync?
+
+foxsync pairs two browser pages and exchanges encrypted messages over WebRTC.
+It includes approval requests and signed reconnects.
+
+### Which integrations are verified?
+
+foxsync implements Firefox demos, WebRTC/Web Crypto transport, IndexedDB storage, and Cloudflare Worker deployment code.
+This rewrite checks source and local tests; it does not verify Safari, Chrome, or physical phones.
+
+### Does foxsync provide a managed TURN service?
+
+foxsync does not provide STUN or TURN servers.
+Supply your own ICE server configuration when the network requires it.
+
+### How is foxsync different from PeerJS?
+
+foxsync uses sealed offer/answer text for device pairing and includes an approval protocol.
+PeerJS provides peer data, audio, and video connections using peer IDs and a signaling server.
+
+### How is foxsync different from simple-peer?
+
+foxsync stores paired-device records and signs reconnect messages.
+simple-peer exposes WebRTC connections and signal events for application code to exchange.
+
+### Does foxsync need a server?
+
+foxsync can pair through manual text exchange without a signaling server.
+Its default WebRTC configuration requires direct reachability between the two ends.
+
+### Does foxsync approve an action automatically?
+
+foxsync returns the remote handler's approve-or-deny response.
+Your application must enforce that decision before it acts.
+
+### Does foxsync keep a link when the page closes?
+
+foxsync's connection ends when its page closes.
+Use stored pair records and reconnect to start a new session.
+
+### Can the relay read approval messages?
+
+foxsync sends approval messages through the encrypted WebRTC link.
+The optional relay receives sealed signaling text and connection metadata.
+
 ## Testing
 
-`pnpm ci:local` runs lint, typecheck, the unit tests, the builds and `web-ext lint`. `pnpm e2e` starts two real Firefox instances. They pair by copy and paste, run an approval round trip, reject a tampered frame, drop and reconnect the link, refuse a reconnect after unpair, and pair through a local relay. The result goes to `artifacts/e2e-<date>.json`.
-
-## Part of the fox primitives
-
-```mermaid
-graph LR
-  foxsync --> foxmate
-  foxgate -. "approvals to the phone" .-> foxsync
-  click foxsync "https://github.com/pooriaarab/foxsync"
-  click foxmate "https://github.com/pooriaarab/foxmate"
-  click foxgate "https://github.com/pooriaarab/foxgate"
-```
-
-foxsync depends on no other fox repo. [foxmate](https://github.com/pooriaarab/foxmate) will use it to send [foxgate](https://github.com/pooriaarab/foxgate) approvals to the phone.
+`pnpm ci:local` runs lint, typecheck, tests, builds, extension lint, and listing checks.
+`pnpm e2e` exercises pairing, approvals, tamper rejection, reconnects, unpairing, and a local relay in Firefox.
 
 ## License
 
-MIT
+[MIT](https://github.com/pooriaarab/foxsync/blob/main/LICENSE)

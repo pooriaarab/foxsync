@@ -1,7 +1,7 @@
 {
   "name": "foxsync",
   "version": "0.1.4",
-  "description": "Control your Firefox agent from your phone over an encrypted peer-to-peer link.",
+  "description": "Encrypted WebRTC device pairing, phone approvals, and signed reconnects for Firefox browser agents, with IndexedDB storage and an optional Cloudflare relay.",
   "type": "module",
   "license": "MIT",
   "author": "Pooria Arab",
@@ -44,5 +44,19 @@
     "uqr": "0.1.3",
     "vitest": "^5.0.3",
     "web-ext": "^10.7.0"
-  }
+  },
+  "keywords": [
+    "webrtc",
+    "device-pairing",
+    "firefox",
+    "mozilla",
+    "phone-approval",
+    "browser-agent",
+    "encrypted-messaging",
+    "web-crypto",
+    "indexeddb",
+    "cloudflare-workers",
+    "typescript",
+    "peer-to-peer"
+  ]
 }
