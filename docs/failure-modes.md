@@ -132,6 +132,8 @@ the pairing code or the pair key, so only the two ends know it.
 | Y6 | (Normal path) pairing through the relay | The phone posts its answer; the desktop picks it up with no copy step | `tests/relay.test.ts` Y6 |
 | Y7 | A reconnect through the relay finds an old offer in the box | The old offer fails as `replay` and is skipped; the new offer connects | `tests/relay.test.ts` Y7 |
 | Y8 | (Normal path, real browsers) the demo pairs through a relay | The phone posts its answer; the desktop links with no pasted answer | `pnpm e2e` Y8 |
+| Y9 | One address floods the public relay with requests | The relay answers 429 with CORS headers after 600 requests a minute from one address, and touches no box | `tests/relay.test.ts` Y9 |
+| Y10 | The desktop cancels a pairing while `waitForPhone()` polls the relay (the user presses Pair again) | The poll stops at once: no relay request after cancel, and the wait rejects with `used` instead of polling until the code expires | `tests/relay.test.ts` Y10 |
 
 ## Data collection declaration (`extension/manifest.json`)
 

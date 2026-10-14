@@ -163,8 +163,10 @@ export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPa
   const qr = o.phoneUrl ? `${o.phoneUrl}#${qrText}` : qrText;
   let attempts = 0;
   let used = false;
+  const polling = new AbortController();
   const cancel = () => {
     used = true;
+    polling.abort(new FoxsyncError("used", "this pairing was cancelled; start a new one"));
     wire.close();
   };
 
@@ -173,7 +175,7 @@ export async function pairDesktop(o: PairDesktopOptions = {}): Promise<DesktopPa
     if (!o.relay) return Promise.reject(new FoxsyncError("bad-input", "give the answer text, or set the relay option"));
     const relay = o.relay;
     return relayBox(root, id).then((box) =>
-      relayTake(relay, box, "a", answerWith, o.relayWaitMs ?? Math.max(expiresAt - now(), 0), o.relayPollMs ?? 1500),
+      relayTake(relay, box, "a", answerWith, o.relayWaitMs ?? Math.max(expiresAt - now(), 0), o.relayPollMs ?? 1500, polling.signal),
     );
   }
 

@@ -118,3 +118,35 @@ describe("pairing and reconnect through the relay", () => {
     expect(links.every((l) => l.isOpen)).toBe(true);
   });
 });
+
+describe("relay worker", () => {
+  it("Y9 answers 429 with CORS headers when one address goes over the limit", async () => {
+    const { default: worker } = await import("../relay/worker.js");
+    const keys: string[] = [];
+    let opened = 0;
+    const env = {
+      LIMIT: { limit: async ({ key }: { key: string }) => (keys.push(key), { success: false }) },
+      BOXES: { idFromName: () => (opened++, "id"), get: () => ({ fetch: async () => new Response(null, { status: 204 }) }) },
+    };
+    const response = await worker.fetch(new Request(`${RELAY}/v1/${box}/a`, { headers: { "cf-connecting-ip": "198.51.100.7" } }), env);
+    expect([response.status, response.headers.get("access-control-allow-origin"), keys, opened]).toEqual([429, "*", ["198.51.100.7"], 0]);
+  });
+});
+
+describe("relay poll", () => {
+  it("Y10 stops polling the relay when the pairing is cancelled", async () => {
+    let gets = 0;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? "GET") === "GET") gets++;
+      return handle(new Request(input, init), store(), now);
+    });
+    const d = await pairDesktop({ wire: memoryWire(), store: new MemoryStore(), relay: RELAY, relayPollMs: 20 });
+    const waiting = d.waitForPhone();
+    await vi.waitFor(() => expect(gets).toBeGreaterThan(1));
+    d.cancel();
+    await expect(waiting).rejects.toMatchObject({ code: "used" });
+    const after = gets;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(gets).toBe(after);
+  });
+});
