@@ -1,6 +1,6 @@
 {
   "name": "foxsync",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Control your Firefox agent from your phone over an encrypted peer-to-peer link.",
   "type": "module",
   "license": "MIT",
